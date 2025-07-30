@@ -1,0 +1,8 @@
+serverip = localhost
+serverport = 52025
+saildown = GLFW_KEY_W
+sailup = GLFW_KEY_S
+wheelleft = GLFW_KEY_A
+wheelright = GLFW_KEY_D
+cannonleft = GLFW_KEY_X
+cannonright = GLFW_KEY_C

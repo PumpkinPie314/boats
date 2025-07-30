@@ -1,0 +1,25 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "java.import.gradle.enabled": true,
+        "java.import.gradle.wrapper.enabled": true,
+        "java.import.gradle.offline.enabled": false,
+        "java.compile.nullAnalysis.mode": "automatic",
+        "java.project.sourcePaths": [
+            "client/src/main/java",
+            "server/src/main/java"
+        ],
+        "java.project.outputPath": "bin"
+    },
+    "extensions": {
+        "recommendations": [
+            "vscjava.vscode-java-pack",
+            "vscjava.vscode-gradle"
+        ]
+    }
+}
