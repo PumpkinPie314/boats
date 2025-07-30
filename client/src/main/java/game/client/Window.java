@@ -7,8 +7,8 @@ import static org.lwjgl.glfw.GLFW.glfwTerminate;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
 public class Window {
-    public long id;
-    public Window() {
+    public static long id;
+    public static void init() {
         System.out.println("starting window");
         if (!glfwInit()){
             throw new IllegalStateException("Unable to initialize GLFW");
@@ -21,7 +21,7 @@ public class Window {
         }
         glfwMakeContextCurrent(id);
     }
-    public void cleanUp() {
+    public static void cleanUp() {
         glfwDestroyWindow(id);
         glfwTerminate();
     }

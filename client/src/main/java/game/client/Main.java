@@ -1,6 +1,15 @@
 package game.client;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.util.Scanner;
 
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -31,25 +40,39 @@ public class Main {
             System.out.println("default config created");
         }
         Config.load(CONFIG_FILE);
+        
+        System.out.println("connecting to server ip:" + Config.serverip + " on port: "+ Config.serverport+ "...");
 
+        Socket socket = new Socket(); // Create an unconnected socket
+        try {
+            socket.connect(new InetSocketAddress(Config.serverip, Config.serverport), Config.connectiontimout); // Attempt connection with timeout
+        } catch (IOException e) {
+            System.err.println("could not connect to server. aborting.");
+            System.exit(1);
+        }
+        System.out.println("connected!");
+        DataInputStream in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+        DataOutputStream out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+        boolean clientLoop = true;
+        Scanner input = new Scanner(System.in);
+        out.writeUTF("this is a test!");
+        out.flush();
+        input.close();
+        socket.close();
+        // System.exit(0);
+        
+        
+        
+        
+        
+        
+        
         System.out.println("making the window...");
-        Window window = new Window();
+        Window.init();
 
         System.out.println("loading shaders...");
         Opengl.init();
 
-        // System.out.println("connecting to server...");
-
-        // Socket socket = new Socket(Config.serverip, Config.serverport);
-        
-        
-        
-        
-        
-        
-        
-        
-        // System.out.println("connected!");
         System.out.println("game started!");
         Camera.setProjection(-40.0f, 40.0f, -40.0f, 40.0f, 100.0f);
         Camera.setPositionView(
@@ -61,34 +84,22 @@ public class Main {
         myboat.sectionDamage = new int[] {0,1,2,3,4,5};
 
         final int target_fps = 20; // slow fps because it is online
-        while (!glfwWindowShouldClose(window.id)) {
+        while (!glfwWindowShouldClose(Window.id)) {
             long start_time = System.nanoTime();
 
             glClearColor(0.0f, 0.5f,0.5f,1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            
-            Vector3f forward = new Vector3f(0, 0, 1).rotate(myboat.rotation);
-            myboat.position.add(forward.mul(myboat.sail_speed * myboat.mast_down_percent));
-            myboat.rotation.rotateAxis(myboat.wheel_turn_percent, 0, 1, 0);
+
             myboat.draw();
             // printMatrixFromUniform("model", Opengl.modelMatrix);
 
             /* Swap front and back buffers */
-            glfwSwapBuffers(window.id);
+            glfwSwapBuffers(Window.id);
 
             /* Poll for and process events */
             glfwPollEvents();
 
-            if (GLFW_PRESS == glfwGetKey(window.id, Config.saildown)) myboat.mast_down_percent += myboat.mast_drop_speed;
-            if (GLFW_PRESS == glfwGetKey(window.id, Config.sailup)) myboat.mast_down_percent -= myboat.mast_raise_speed;
-            if (myboat.mast_down_percent > 1.0) myboat.mast_down_percent = 1;
-            if (myboat.mast_down_percent < 0.0) myboat.mast_down_percent = 0;
-            
-            if (GLFW_PRESS == glfwGetKey(window.id, GLFW_KEY_D)) myboat.wheel_turn_percent += myboat.wheel_turn_speed;
-            if (GLFW_PRESS == glfwGetKey(window.id, GLFW_KEY_A)) myboat.wheel_turn_percent -= myboat.wheel_turn_speed;
-            if (myboat.wheel_turn_percent > 1.0) myboat.wheel_turn_percent = 1;
-            if (myboat.wheel_turn_percent < -1.0) myboat.wheel_turn_percent = -1;
-
+            if (GLFW_PRESS == glfwGetKey(Window.id, Config.saildown));
 
             long delta_ns = System.nanoTime() - start_time;
             double delta_ms = delta_ns / 1_000_000.0;
@@ -97,11 +108,13 @@ public class Main {
                 Thread.sleep(1000L/target_fps - (long)delta_ms);
                 fps = target_fps;
             }
-            glfwSetWindowTitle(window.id, WINDOW_NAME + "boat screen pos: " + Opengl.getScreenSpace(myboat.position).x() + "," +  Opengl.getScreenSpace(myboat.position).x() + "    fps: " + (int)fps);
+            glfwSetWindowTitle(Window.id, WINDOW_NAME + "boat screen pos: " + Opengl.getScreenSpace(myboat.position).x() + "," +  Opengl.getScreenSpace(myboat.position).x() + "    fps: " + (int)fps);
         }
-        // Cleanup
+
+    }
+    public static void cleanup(){
         Mesh.cleanupAll();
         Opengl.cleanup();
-        window.cleanUp();
+        Window.cleanUp();
     }
 }

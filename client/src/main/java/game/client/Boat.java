@@ -5,22 +5,15 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-    public class Boat {
-        // stuff used for drawing
-        public int[] sectionDamage = new int[6];
-        public Vector3f position = new Vector3f();
-        public Quaternionf rotation = new Quaternionf();
-        public Vector3f scale = new Vector3f(1.0f).mul(10.0f);
-        // move this stuff to server
-        public float sail_speed = 1.0f/5;
-        public float turn_radius = 3.0f;
-        public float wheel_turn_speed = 1.0f/500;
-        public float mast_drop_speed = 1.0f/10;
-        public float mast_raise_speed = 1.0f/20;
-
-        public float mast_down_percent = 0f;
-        public float wheel_turn_percent = 0f;
-        public void draw() {
+public class Boat {
+    public int[] sectionDamage = new int[6];
+    public Vector3f position = new Vector3f();
+    public Quaternionf rotation = new Quaternionf();
+    public Vector3f scale = new Vector3f(1.0f).mul(10.0f);
+    public float mast_down_percent = 0f;
+    public float wheel_turn_percent = 0f;
+    public float cananon_turn_percent = 0f;
+    public void draw() {
         Matrix4f modelMatrix = new Matrix4f().translationRotateScale(position, rotation, scale);
 
         float[][][] section = {
@@ -66,8 +59,6 @@ import org.joml.Vector3f;
             } else if (vertices.length == 4) {
                 indices = new int[] { 1, 0, 2, 1, 3, 2 };
             }
-
-            System.out.println(Arrays.toString(vertex_data));
             new Mesh(vertex_data, indices).draw(modelMatrix);
         }
     }

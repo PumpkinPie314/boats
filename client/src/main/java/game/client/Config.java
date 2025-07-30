@@ -11,6 +11,7 @@ import org.lwjgl.glfw.GLFW;
 public class Config {
     public static String serverip;
     public static int serverport;
+    public static int connectiontimout;
     public static int sailup;
     public static int saildown;
     public static int wheelleft;
@@ -23,6 +24,7 @@ public class Config {
             String default_config = """
             serverip = localhost
             serverport = 52025
+            connectiontimout = 1000
             saildown = GLFW_KEY_W
             sailup = GLFW_KEY_S
             wheelleft = GLFW_KEY_A
@@ -47,15 +49,16 @@ public class Config {
                     try {
                         Field field = Config.class.getField(fieldName);
                         Class<?> type = field.getType();
-                        System.out.print("setting "+ fieldName+": ");
                         if (type == String.class) {
                             field.set(null, value);
-                            System.out.println(value);
                         } else if (type == int.class) {
-                            Field glfwField = GLFW.class.getField(value);
-                            int intValue = glfwField.getInt(null);
-                            System.out.println(intValue);
-                            field.setInt(null, intValue);
+                            if (value.matches("\\d+")){
+                                field.setInt(null, Integer.parseInt(value));
+                            } else {
+                                Field glfwField = GLFW.class.getField(value);
+                                int intValue = glfwField.getInt(null);
+                                field.setInt(null, intValue);
+                            }
                         }
                     } catch (IllegalAccessException | SecurityException | NoSuchFieldException e) {
                         System.err.println("failed to parse config file: " + e);
@@ -64,8 +67,19 @@ public class Config {
         } catch (IOException e) {
             System.err.println("failed to parse config file: " + e);
         }
+        for (Field field: Config.class.getFields()){
+            try {
+                Object value = field.get(null);
+                Class <?> type = field.getType();
+                if (type == String.class && value != null) continue;
+                if (type == int.class && (Integer) value != 0) continue;
+                System.out.println("WARNING!: " + field.getName() + " may be missing from config");
+            } catch (IllegalAccessException | IllegalArgumentException e) {
+                System.err.println("failed to itterate over parsed config file: "+e);
+            }
+        }
     }
-    // I hate this code, I don't like how indented it is :'( 
-    // try catch is ugly
+    // wow recursion is so cool! 
+    // also try catch is ugly
 
 }
