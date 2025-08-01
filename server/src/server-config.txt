@@ -1,0 +1,5 @@
+sail_speed = 1/5
+turn_radius = 3
+wheel_turn_speed = 1/500 # wheel speed!
+mast_drop_speed = 1/10
+mast_raise_speed = 1/20

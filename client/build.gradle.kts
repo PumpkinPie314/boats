@@ -32,6 +32,7 @@ java {
 }
 
 dependencies {
+	implementation(project(":common"))
 	implementation(platform("org.lwjgl:lwjgl-bom:$lwjglVersion"))
 
 	implementation("org.lwjgl", "lwjgl")

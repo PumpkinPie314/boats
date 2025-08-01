@@ -16,9 +16,9 @@ public class Config {
     public static int saildown;
     public static int wheelleft;
     public static int wheelright;
-    public static int cannonleft;
-    public static int cannonright;
-
+    public static int sailleft;
+    public static int sailright;
+    
     public static void createDefault(){
         try {
             String default_config = """
@@ -29,8 +29,9 @@ public class Config {
             sailup = GLFW_KEY_S
             wheelleft = GLFW_KEY_A
             wheelright = GLFW_KEY_D
-            cannonleft = GLFW_KEY_X
-            cannonright = GLFW_KEY_C
+            sailleft = GLFW_KEY_X
+            sailright = GLFW_KEY_C
+
             """;
             Files.writeString(Paths.get(Main.CONFIG_FILE), default_config);
         } catch (IOException e) {

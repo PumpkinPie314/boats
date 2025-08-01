@@ -1,8 +1,10 @@
 serverip = localhost
 serverport = 52025
+connectiontimout = 1000
 saildown = GLFW_KEY_W
 sailup = GLFW_KEY_S
 wheelleft = GLFW_KEY_A
 wheelright = GLFW_KEY_D
 sailleft = GLFW_KEY_X
-sailright = GLFW_KEY_E
+sailright = GLFW_KEY_C
+

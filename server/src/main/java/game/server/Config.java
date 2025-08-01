@@ -9,10 +9,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
-
 public class Config {
     public static float sail_speed = 1.0f/5;
     public static float turn_radius = 3.0f;
@@ -74,7 +70,7 @@ public class Config {
                 } else {
                     System.err.println("Unsupported value format for field \"" + fieldName + "\": " + rawValue);
                     System.exit(1);
-                    return; // needed for compilation
+                    return;
                 }
 
                 if (type == float.class && parsedValue instanceof Float) {

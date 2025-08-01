@@ -34,10 +34,4 @@ public class Camera {
     
     public static Vector3f    getPosition() {return position;}
     public static Quaternionf getRotation() {return rotation;}
-
-    public static float getLeft()    {return left;}
-    public static float getRight()   {return right;}
-    public static float getBottom()  {return bottom;}
-    public static float getTop()     {return top;}
-    public static float getFar()     {return far;}
 }

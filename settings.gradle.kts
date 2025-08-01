@@ -1,2 +1,2 @@
 rootProject.name = "finalproject"
-include("client", "server")
+include("client", "server", "common")

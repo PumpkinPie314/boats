@@ -1,20 +1,15 @@
 package game.client;
 
 import java.util.Arrays;
+
 import org.joml.Matrix4f;
-import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-public class Boat {
-    public int[] sectionDamage = new int[6];
-    public Vector3f position = new Vector3f();
-    public Quaternionf rotation = new Quaternionf();
-    public Vector3f scale = new Vector3f(1.0f).mul(10.0f);
-    public float mast_down_percent = 0f;
-    public float wheel_turn_percent = 0f;
-    public float cananon_turn_percent = 0f;
-    public void draw() {
-        Matrix4f modelMatrix = new Matrix4f().translationRotateScale(position, rotation, scale);
+import game.common.Boat;
+
+public class Drawer {
+    public static void draw(Boat boat) {
+        Matrix4f modelMatrix = new Matrix4f().translationRotateScale(boat.position, boat.rotation, new Vector3f(1.0f).mul(10.0f));
 
         float[][][] section = {
             { { 0.0f, 0.0f, 0.6f }, { -0.25f, 0.0f, 0.2f }, { 0.0f, 0.0f, 0.2f } }, // u
@@ -25,7 +20,7 @@ public class Boat {
             { { 0.0f, 0.0f, -0.2f }, { 0.25f, 0.0f, -0.2f }, { 0.0f, 0.0f, -0.4f }, { 0.125f, 0.0f, -0.4f } }   // z
         };
 
-        float[][] colors = Arrays.stream(sectionDamage)
+        float[][] colors = Arrays.stream(boat.sectionDamage)
         .mapToObj(id -> switch (id) {
             case 1 -> new float[] { 1.0f, 0.0f, 0.0f };   // Red
             case 2 -> new float[] { 1.0f, 0.5f, 0.0f };   // Orange
@@ -36,9 +31,7 @@ public class Boat {
             default -> new float[] { 0.5f, 0.5f, 0.5f };  // Gray
         })
         .toArray(float[][]::new);
-
         assert section.length == colors.length;
-
         for (int i = 0; i < section.length; i++) {
             float[] color = colors[i];
             float[][] vertices = section[i];
@@ -61,8 +54,5 @@ public class Boat {
             }
             new Mesh(vertex_data, indices).draw(modelMatrix);
         }
-    }
-    public Matrix4f getModelMatrix() {
-        return new Matrix4f().translationRotateScale(position, rotation, scale);
     }
 }
