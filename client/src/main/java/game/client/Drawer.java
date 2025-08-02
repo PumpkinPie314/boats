@@ -9,7 +9,7 @@ import game.common.Boat;
 
 public class Drawer {
     public static void draw(Boat boat) {
-        Matrix4f modelMatrix = new Matrix4f().translationRotateScale(boat.position, boat.rotation, new Vector3f(1.0f).mul(10.0f));
+        Matrix4f modelMatrix = new Matrix4f().translationRotateScale(boat.position, boat.rotation, new Vector3f(1.0f).mul(1.0f));
 
         float[][][] section = {
             { { 0.0f, 0.0f, 0.6f }, { -0.25f, 0.0f, 0.2f }, { 0.0f, 0.0f, 0.2f } }, // u

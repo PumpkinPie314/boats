@@ -9,7 +9,6 @@ import static org.lwjgl.system.MemoryUtil.NULL;
 public class Window {
     public static long id;
     public static void init() {
-        System.out.println("starting window");
         if (!glfwInit()){
             throw new IllegalStateException("Unable to initialize GLFW");
         }

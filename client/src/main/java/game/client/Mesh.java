@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.joml.Matrix4f;
 import static org.lwjgl.opengl.GL11.GL_FLOAT;
+import static org.lwjgl.opengl.GL11.GL_LINES;
 import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
 import static org.lwjgl.opengl.GL11.GL_UNSIGNED_INT;
 import static org.lwjgl.opengl.GL11.glDrawElements;
@@ -92,6 +93,11 @@ public class Mesh {
         Opengl.setDrawScreenSpace(true);
         glBindVertexArray(this.vao);
         glDrawElements(GL_TRIANGLES, this.size , GL_UNSIGNED_INT, 0);
+    }
+    public void drawLines() {
+        Opengl.setDrawScreenSpace(true);
+        glBindVertexArray(this.vao);
+        glDrawElements(GL_LINES, this.size , GL_UNSIGNED_INT, 0);
     }
     public void cleanup() {
         glDeleteBuffers(vbo);

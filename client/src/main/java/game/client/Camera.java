@@ -21,8 +21,8 @@ public class Camera {
         // both transformation are inverted because the view matrix transforms the world around the camera.
         Matrix4f viewMatrix = new Matrix4f()
             .identity()
-            .translate(new Vector3f(position).negate())
-            .rotate(new Quaternionf(rotation).invert());
+            .rotate(new Quaternionf(rotation).invert())
+            .translate(new Vector3f(position).negate());
         
         Opengl.setViewMatrix(viewMatrix);
     }
