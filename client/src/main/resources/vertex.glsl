@@ -1,5 +1,8 @@
 #version 450 core
 
+out gl_PerVertex {
+    vec4 gl_Position;
+};
 in vec3 position;
 in vec3 color;
 in vec2 texturePos;

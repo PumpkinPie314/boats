@@ -14,6 +14,10 @@ import static org.lwjgl.opengl.GL20.GL_VERTEX_SHADER;
 import static org.lwjgl.opengl.GL20.glDeleteProgram;
 import static org.lwjgl.opengl.GL20.glGetUniformLocation;
 import static org.lwjgl.opengl.GL20.glGetUniformfv;
+import static org.lwjgl.opengl.GL20.GL_LINK_STATUS;
+import static org.lwjgl.opengl.GL20.glGetProgramiv;
+import static org.lwjgl.opengl.GL20.glGetProgramInfoLog;
+import static org.lwjgl.opengl.GL11.GL_FALSE;
 import org.lwjgl.opengl.GL41;
 import static org.lwjgl.opengl.GL41.GL_FRAGMENT_SHADER_BIT;
 import static org.lwjgl.opengl.GL41.GL_VERTEX_SHADER_BIT;
@@ -31,6 +35,8 @@ import static org.lwjgl.opengl.GL45.glTextureSubImage2D;
 import static org.lwjgl.stb.STBImage.stbi_failure_reason;
 import static org.lwjgl.stb.STBImage.stbi_image_free;
 import static org.lwjgl.stb.STBImage.stbi_load_from_memory;
+import static org.lwjgl.opengl.GL11.GL_CULL_FACE;
+import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
 import static org.lwjgl.opengl.GL11.GL_NEAREST;
 import static org.lwjgl.opengl.GL11.GL_REPEAT;
 import static org.lwjgl.opengl.GL11.GL_RGBA;
@@ -41,10 +47,8 @@ import static org.lwjgl.opengl.GL11.GL_TEXTURE_MIN_FILTER;
 import static org.lwjgl.opengl.GL11.GL_TEXTURE_WRAP_S;
 import static org.lwjgl.opengl.GL11.GL_TEXTURE_WRAP_T;
 import static org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE;
-import static org.lwjgl.opengl.GL11.glBindTexture;
-import static org.lwjgl.opengl.GL13.GL_TEXTURE0;
-import static org.lwjgl.opengl.GL13.glActiveTexture;
-import static org.lwjgl.opengl.GL20.glUniform1i;
+import static org.lwjgl.opengl.GL11.glDisable;
+import static org.lwjgl.opengl.GL11.glEnable;
 
 public class Opengl {
     static int vertex_program;
@@ -66,7 +70,29 @@ public class Opengl {
         // load shaders 
         fragment_program = ShaderFromResource(GL_FRAGMENT_SHADER, "/fragment.glsl");
         vertex_program = ShaderFromResource( GL_VERTEX_SHADER, "/vertex.glsl");
-        // set up pipeline
+        glEnable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
+
+        System.out.println("Checking shader compilation status...");
+        int[] status = new int[1];
+        glGetProgramiv(vertex_program, GL_LINK_STATUS, status);
+        if (status[0] == GL_FALSE) {
+            System.err.println("Vertex program failed to compile/link");
+            String log = glGetProgramInfoLog(vertex_program);
+            System.err.println("Vertex program error log: " + log);
+        } else {
+            System.out.println("Vertex program compiled successfully");
+        }
+
+        glGetProgramiv(fragment_program, GL_LINK_STATUS, status);
+        if (status[0] == GL_FALSE) {
+            System.err.println("Fragment program failed to compile/link");
+            String log = glGetProgramInfoLog(fragment_program);
+            System.err.println("Fragment program error log: " + log);
+        } else {
+            System.out.println("Fragment program compiled successfully");
+        }
+
         pipeline = glGenProgramPipelines();
         glUseProgramStages(pipeline, GL_VERTEX_SHADER_BIT, vertex_program);
         glUseProgramStages(pipeline, GL_FRAGMENT_SHADER_BIT, fragment_program);
@@ -75,7 +101,6 @@ public class Opengl {
         modelMatrix = glGetUniformLocation(vertex_program, "modelMatrix"); 
         viewMatrix = glGetUniformLocation(vertex_program, "viewMatrix");
         projectionMatrix = glGetUniformLocation(vertex_program, "projectionMatrix");
-
         textureSamplerUniform = glGetUniformLocation(Opengl.fragment_program, "textureSampler");
     }
     public static int ShaderFromResource(int type, String path) {
@@ -184,6 +209,9 @@ public class Opengl {
 
         stbi_image_free(decodedImage); // frees from cpu memory
         textureId = id;
+        
+        glBindTextureUnit(0, textureId);
+        glProgramUniform1i(fragment_program, textureSamplerUniform, 0);
     }
     public static Vector3f getScreenSpace(Vector3f position) {
         Vector3f screenSpace = new Vector3f();

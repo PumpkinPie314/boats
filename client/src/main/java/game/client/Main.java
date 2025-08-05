@@ -26,12 +26,7 @@ import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.glClear;
 import static org.lwjgl.opengl.GL11.glClearColor;
-import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
-import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
-import static org.lwjgl.opengl.GL11.GL_UNSIGNED_INT;
-import static org.lwjgl.opengl.GL11.glBindTexture;
-import static org.lwjgl.opengl.GL11.glDrawElements;
-import static org.lwjgl.opengl.GL30.glBindVertexArray;
+
 @SuppressWarnings("BusyWait") // allows sleep() in a loop
 public class Main {
     public static final String WINDOW_NAME = "Game";
@@ -60,7 +55,7 @@ public class Main {
         
         
         System.out.println("loading textures...");
-        Opengl.loadTexture("/textures/threefifty.png");
+        Opengl.loadTexture("/textures/textures.png");
 
 
         Camera.setProjection(-10.0f, 10.0f, -10.0f, 10.0f, 100.0f);
@@ -105,8 +100,8 @@ public class Main {
             
             // position camera
             Camera.setPositionView(
-                new Vector3f(myboat.position).add(0, 10, 0), 
-                new Quaternionf().lookAlong(new Vector3f(0,-1,0), new Vector3f(1,0,0))
+                new Vector3f(myboat.position).add(0, 2, 0), 
+                new Quaternionf().lookAlong(new Vector3f(0,-1,0), new Vector3f(0,0,1))
             );
 
             
@@ -150,10 +145,6 @@ public class Main {
             glClearColor(0.0f, 0.5f,0.5f,1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             {
-                Vector3f mast_base = new Vector3f(0, 0, 0.2f);
-                float mast_height = 5;
-                float mast_width = 0.1f;
-
                 float[] vertex_data = {
                     // x y z, r g b, s t
                     5, 0, 5, 1, 1, 1, 0, 0,
@@ -166,12 +157,8 @@ public class Main {
                     0, 2, 3,
                 };
                 
-                Mesh line = new Mesh(vertex_data, indices);
-
-                Opengl.setModelMatrix(new Matrix4f());
-                glBindVertexArray(line.vao);
-                glBindTexture(GL_TEXTURE_2D, Opengl.textureId);
-                glDrawElements(GL_TRIANGLES, line.size , GL_UNSIGNED_INT, 0);
+                Mesh quad = new Mesh(vertex_data, indices);
+                quad.draw(new Matrix4f());
             }
             {
                 // all wake foam logic

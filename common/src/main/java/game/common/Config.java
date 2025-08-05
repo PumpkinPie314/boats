@@ -3,7 +3,7 @@ package game.common;
 import java.io.Serializable;
 
 public class Config implements Serializable{
-    public float fps = 20;
+    public float fps = 60;
     public float sail_speed = 1;
     public float turn_speed = 1;
     public float wheel_turn_speed = 1;

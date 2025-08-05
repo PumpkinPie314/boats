@@ -17,7 +17,6 @@ public class Main {
     public static final List<Player> players_async = new ArrayList<>();
                                    //players_async is a bunch of threads running in parrelel. one for each client
     public static final GameState gameState = new GameState();
-    public static final int target_fps = 60;
     public static boolean serverRunning = true;
     public static void main(String[] args) throws IOException, InterruptedException {
         System.out.println("Hello from server!");
@@ -27,7 +26,7 @@ public class Main {
             ConfigLoader.createDefault(CONFIG_FILE);
             System.out.println("default config created");
         }
-        ConfigLoader.load(CONFIG_FILE);
+        gameState.config = ConfigLoader.load(CONFIG_FILE);
         new Thread(()->ConfigLoader.watchForConfigChanged(CONFIG_FILE, gameState.config)).start();;
 
         System.out.println("listening on port: " + PORT);
@@ -92,7 +91,7 @@ public class Main {
             long delta_ns = System.nanoTime() - start_time;
             double delta_ms = delta_ns / 1_000_000.0;
             double fps = 1000.0 / delta_ms;
-            if (fps > target_fps) {
+            if (fps > config.) {
                 Thread.sleep(1000L/target_fps - (long)delta_ms);
                 fps = target_fps;
             }            
