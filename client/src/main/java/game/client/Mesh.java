@@ -14,6 +14,7 @@ import static org.lwjgl.opengl.GL11.glDrawElements;
 import static org.lwjgl.opengl.GL15.GL_STATIC_DRAW;
 import static org.lwjgl.opengl.GL15.glDeleteBuffers;
 import static org.lwjgl.opengl.GL20.glGetAttribLocation;
+import static org.lwjgl.opengl.GL20.glGetUniformLocation;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
 import static org.lwjgl.opengl.GL30.glDeleteVertexArrays;
 import static org.lwjgl.opengl.GL45.glCreateBuffers;
@@ -44,6 +45,7 @@ public class Mesh {
 
         int position = glGetAttribLocation(Opengl.vertex_program, "position");
         int color = glGetAttribLocation(Opengl.vertex_program, "color");
+        int texturePos = glGetAttribLocation(Opengl.vertex_program, "texturePos");
 
         // the vbo, or vertex buffer object, is just a buffer of floats that we want read as points. 
         // we need to describe to the vao about how exacly we plan to use this buffer, including size , stride, etc.
@@ -53,7 +55,7 @@ public class Mesh {
         vertex_buffer.flip();
         glNamedBufferData(vbo, vertex_buffer, GL_STATIC_DRAW); 
             //'GL_STATIC_DRAW' has nothing to do with drawing, and is only a hint to opengl about how often the values inside the buffer change
-        glVertexArrayVertexBuffer(vao,0, vbo, 0, 6 * Float.BYTES);
+        glVertexArrayVertexBuffer(vao,0, vbo, 0, 8 * Float.BYTES);
 
         glEnableVertexArrayAttrib(vao, position);
         glVertexArrayAttribFormat(vao, position, 3, GL_FLOAT, false, 0);
@@ -62,8 +64,12 @@ public class Mesh {
         glEnableVertexArrayAttrib(vao, color);
         glVertexArrayAttribFormat(vao, color, 3, GL_FLOAT, false, 3 * Float.BYTES);
         glVertexArrayAttribBinding(vao, color, 0);
+        
+        glEnableVertexArrayAttrib(vao, texturePos);
+        glVertexArrayAttribFormat(vao, texturePos, 2, GL_FLOAT, false, 6 * Float.BYTES);
+        glVertexArrayAttribBinding(vao, texturePos, 0);
 
-
+        
         
         // the ebo, or element buffer object, is list of indexes into the vbo.
         // it tells the vao what order the points defined in the vbo should be drawn 
@@ -84,18 +90,11 @@ public class Mesh {
     }
 
     public void draw(Matrix4f modelMatrix) {
-        Opengl.setDrawScreenSpace(false);
         Opengl.setModelMatrix(modelMatrix);
         glBindVertexArray(this.vao);
         glDrawElements(GL_TRIANGLES, this.size , GL_UNSIGNED_INT, 0);
     }
-    public void draw() {
-        Opengl.setDrawScreenSpace(true);
-        glBindVertexArray(this.vao);
-        glDrawElements(GL_TRIANGLES, this.size , GL_UNSIGNED_INT, 0);
-    }
     public void drawLines() {
-        Opengl.setDrawScreenSpace(true);
         glBindVertexArray(this.vao);
         glDrawElements(GL_LINES, this.size , GL_UNSIGNED_INT, 0);
     }

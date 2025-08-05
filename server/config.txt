@@ -1,7 +1,8 @@
-sail_speed = 1
+fps = 20
+sail_speed = 10
 turn_speed = 3
 wheel_turn_speed = 1
-mast_drop_speed = 1/2 
+mast_drop_speed = 1/10 
 mast_raise_speed = 1 
 sail_turn_speed = 0.1
 wind_drag = 0.0001

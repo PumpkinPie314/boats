@@ -8,7 +8,7 @@ import java.nio.file.Paths;
 import org.lwjgl.glfw.GLFW;
 
 
-public class Config {
+public class ClientConfig {
     public static String serverip;
     public static int serverport;
     public static int connectiontimout;
@@ -30,9 +30,7 @@ public class Config {
             wheelleft = GLFW_KEY_A
             wheelright = GLFW_KEY_D
             sailleft = GLFW_KEY_X
-            sailright = GLFW_KEY_C
-
-            """;
+            sailright = GLFW_KEY_C""";
             Files.writeString(Paths.get(Main.CONFIG_FILE), default_config);
         } catch (IOException e) {
             System.err.println("could not write/create a new config file");
@@ -42,13 +40,13 @@ public class Config {
     public static void load(String filepath){
         try {
             Files.lines(Paths.get(filepath))
-                .filter(s -> s.matches("\\s*\\w+\\s*=\\s*\\w+\\s*"))
+                .filter(line -> line.contains("="))
                 .map(line -> line.split("\\s*=\\s*", 2))
                 .forEach(pair -> {
                     String fieldName = pair[0].trim();
                     String value = pair[1].trim();
                     try {
-                        Field field = Config.class.getField(fieldName);
+                        Field field = ClientConfig.class.getField(fieldName);
                         Class<?> type = field.getType();
                         if (type == String.class) {
                             field.set(null, value);
@@ -61,6 +59,7 @@ public class Config {
                                 field.setInt(null, intValue);
                             }
                         }
+                        // System.out.println("set " + fieldName + " to " + value);
                     } catch (IllegalAccessException | SecurityException | NoSuchFieldException e) {
                         System.err.println("failed to parse config file: " + e);
                     }
@@ -68,7 +67,7 @@ public class Config {
         } catch (IOException e) {
             System.err.println("failed to parse config file: " + e);
         }
-        for (Field field: Config.class.getFields()){
+        for (Field field: ClientConfig.class.getFields()){
             try {
                 Object value = field.get(null);
                 Class <?> type = field.getType();

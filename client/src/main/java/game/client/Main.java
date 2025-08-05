@@ -1,20 +1,21 @@
 package game.client;
 import java.io.ObjectOutputStream;
-import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import game.common.Boat;
+import game.common.Config;
 import game.common.GameState;
-import game.common.InputState;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.glfwGetKey;
 import static org.lwjgl.glfw.GLFW.glfwPollEvents;
@@ -25,43 +26,31 @@ import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.glClear;
 import static org.lwjgl.opengl.GL11.glClearColor;
-import static org.lwjgl.opengl.GL11.GL_FLOAT;
-import static org.lwjgl.opengl.GL11.GL_LINES;
+import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
 import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
 import static org.lwjgl.opengl.GL11.GL_UNSIGNED_INT;
+import static org.lwjgl.opengl.GL11.glBindTexture;
 import static org.lwjgl.opengl.GL11.glDrawElements;
-import static org.lwjgl.opengl.GL15.GL_STATIC_DRAW;
-import static org.lwjgl.opengl.GL15.glDeleteBuffers;
-import static org.lwjgl.opengl.GL20.glGetAttribLocation;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
-import static org.lwjgl.opengl.GL30.glDeleteVertexArrays;
-import static org.lwjgl.opengl.GL45.glCreateBuffers;
-import static org.lwjgl.opengl.GL45.glCreateVertexArrays;
-import static org.lwjgl.opengl.GL45.glEnableVertexArrayAttrib;
-import static org.lwjgl.opengl.GL45.glNamedBufferData;
-import static org.lwjgl.opengl.GL45.glVertexArrayAttribBinding;
-import static org.lwjgl.opengl.GL45.glVertexArrayAttribFormat;
-import static org.lwjgl.opengl.GL45.glVertexArrayElementBuffer;
-import static org.lwjgl.opengl.GL45.glVertexArrayVertexBuffer;
 @SuppressWarnings("BusyWait") // allows sleep() in a loop
 public class Main {
     public static final String WINDOW_NAME = "Game";
     public static final String CONFIG_FILE = "client-config.txt";
     public static GameState gameState = new GameState();
-    public static boolean connected_to_server = false;
     public static Socket socket;
     public static ObjectOutputStream out;
     public static ObjectInputStream in;
+    public static Random rand = new Random();
     public static void main(String[] args) throws InterruptedException , IOException {
         System.out.println("hello from client!");
 
         System.out.println("loading config");
         File config_file = new File(CONFIG_FILE);
         if (!config_file.exists()) {
-            Config.createDefault();
+            ClientConfig.createDefault();
             System.out.println("default config created");
         }
-        Config.load(CONFIG_FILE);
+        ClientConfig.load(CONFIG_FILE);
         
         System.out.println("making the window...");
         Window.init();
@@ -69,108 +58,145 @@ public class Main {
         System.out.println("loading shaders...");
         Opengl.init();
         
+        
+        System.out.println("loading textures...");
+        Opengl.loadTexture("/textures/threefifty.png");
+
+
         Camera.setProjection(-10.0f, 10.0f, -10.0f, 10.0f, 100.0f);
         
+        // connect to server
+        System.out.println("connecting to server ip:" + ClientConfig.serverip + " on port: "+ ClientConfig.serverport+ "...");
+        try {
+            socket = new Socket();
+            socket.setTcpNoDelay(true);
+            socket.connect(new InetSocketAddress(ClientConfig.serverip, ClientConfig.serverport), ClientConfig.connectiontimout);
+            out = new ObjectOutputStream(socket.getOutputStream());
+            in = new ObjectInputStream(socket.getInputStream());
+            System.out.println("connected!");
+        } catch (IOException e) {
+            System.err.println("Failed to connect to server: " + e.getMessage());
+            cleanup();
+            System.exit(1);
+        }
+        
         System.out.println("game started!");
-        Boat myboat = new Boat();// this new boat is not in gamestate and is overwriten immidietly
+        Boat myboat = new Boat();
+        myboat.sectionHealth = new int[] {3,3,3,1,2,3};
+        int myboat_index = -1; //the index of this client's boat in the gamestate.boats arraylist
+        List<Vector3f> wakeFoam = new ArrayList<>();
         while (!glfwWindowShouldClose(Window.id)) {
             long start_time = System.nanoTime();
-            // clear
-            glClearColor(0.0f, 0.5f,0.5f,1.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            // connect to server
-            if (!connected_to_server) {
-                glfwPollEvents();
-                glfwSetWindowTitle(Window.id, "connecting...");
-                if(connectToServer()){
-                    System.out.println("connecting to server ip:" + Config.serverip + " on port: "+ Config.serverport+ "...");
-                    connected_to_server = true;
-                    System.out.println("connected!");
-                } else {
-                    socket.close();
-                    Thread.sleep(1000);
-                    continue;
-                }
-            }
             
             // parse incoming game state from server
             try {
-                int myboat_index = in.readInt();
+                myboat_index = in.readInt();
                 gameState = (GameState) in.readObject();
-                myboat = gameState.boats.get(myboat_index);
             } catch (ClassNotFoundException  e) {
                 System.err.println("failed parsing gamestate packet");
                 System.exit(1);
             } catch (IOException e) {
                 System.out.println("server disconnected!");
-                connected_to_server = false;
-                continue;
+                try { socket.close(); } catch (IOException ignored) {}
+                cleanup();
+                System.exit(0);
             }
+            if (myboat_index == -1) {System.err.println("by boat index not set from server!");} 
             
             // position camera
             Camera.setPositionView(
-                new Vector3f(myboat.position).add(0, 1, 0), 
-                new Quaternionf().lookAlong(new Vector3f(0,-1,0), new Vector3f(0,0,1))
+                new Vector3f(myboat.position).add(0, 10, 0), 
+                new Quaternionf().lookAlong(new Vector3f(0,-1,0), new Vector3f(1,0,0))
             );
-            // draw line for testing
+
+            
+
+            // collect inputs
+            glfwPollEvents();
+            Config config = gameState.config;
+            float dt = 1f/config.fps;
+
+            if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.saildown)) myboat.mast_down_percent += config.mast_drop_speed * dt;
+            if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.sailup)) myboat.mast_down_percent -= config.mast_raise_speed * dt;
+            if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.wheelleft)) myboat.wheel_turn_percent -= config.wheel_turn_speed * dt;
+            if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.wheelright)) myboat.wheel_turn_percent += config.wheel_turn_speed * dt;
+            if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.sailleft)) myboat.sail_turn_percent -= config.sail_turn_speed * dt;
+            if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.sailright)) myboat.sail_turn_percent += config.sail_turn_speed * dt;
+
+            // update boat
+            if (myboat.mast_down_percent > 1f) myboat.mast_down_percent = 1f;
+            if (myboat.mast_down_percent < 0f) myboat.mast_down_percent = 0f;
+            if (myboat.wheel_turn_percent > 1f) myboat.wheel_turn_percent = 1f;
+            if (myboat.wheel_turn_percent < -1f) myboat.wheel_turn_percent = -1f;
+            if (myboat.sail_turn_percent > 1f) myboat.sail_turn_percent = 1f;
+            if (myboat.sail_turn_percent < -1f) myboat.sail_turn_percent = -1f;
+            myboat.cannonRotation = new Quaternionf();
+
+
+            Vector3f forward = new Vector3f(0,0,1).rotate(myboat.rotation);
+            // gameState.wind_direction = myboat.rotation; // temp!
+            myboat.velocity = forward.mul(myboat.mast_down_percent * config.sail_speed);
+            myboat.rotation.integrate(dt, 0, myboat.wheel_turn_percent * config.turn_speed * -1,0);
+
+            myboat.position.add(myboat.velocity.mul(dt));
+
+
+            // send new updated boat
+            out.reset();
+            out.writeObject(myboat);
+            out.flush();
+            
+            // draw
+            glClearColor(0.0f, 0.5f,0.5f,1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             {
+                Vector3f mast_base = new Vector3f(0, 0, 0.2f);
+                float mast_height = 5;
+                float mast_width = 0.1f;
+
                 float[] vertex_data = {
-                    // x y z, r g b
-                    0, 0, 0, 0, 0, 0,
-                    5, 0, 5, 0, 0 ,0,
+                    // x y z, r g b, s t
+                    5, 0, 5, 1, 1, 1, 0, 0,
+                    0, 0, 5, 1, 1 ,1, 1, 0,
+                    5, 0, 0, 1, 1, 1, 0, 1,
+                    0, 0, 0, 1, 1 ,1, 1, 1,
                 };
                 int[] indices = {
-                    0, 1
+                    0, 1, 3, 
+                    0, 2, 3,
                 };
                 
                 Mesh line = new Mesh(vertex_data, indices);
 
-                Opengl.setDrawScreenSpace(false);
                 Opengl.setModelMatrix(new Matrix4f());
                 glBindVertexArray(line.vao);
-                glDrawElements(GL_LINES, line.size , GL_UNSIGNED_INT, 0);
+                glBindTexture(GL_TEXTURE_2D, Opengl.textureId);
+                glDrawElements(GL_TRIANGLES, line.size , GL_UNSIGNED_INT, 0);
             }
+            {
+                // all wake foam logic
+                for (Boat boat : gameState.boats) {
+                    wakeFoam.add(boat.position); 
+                }
 
-
-            
-            // draw
-            gameState.boats.stream().forEach(Drawer::draw);
+            }
+            {
+                // draw boats
+                Drawer.drawhHull(myboat);
+                for (int i = 0; i < gameState.boats.size(); i++) {
+                    if (i == myboat_index) continue;// the client can draw her own boat
+                    Drawer.drawhHull(gameState.boats.get(i));
+                }
+            } 
             glfwSwapBuffers(Window.id);
 
 
-            // collect inputs
-            glfwPollEvents();
-            InputState inputPacket = new InputState();
-            inputPacket.saildown = GLFW_PRESS == glfwGetKey(Window.id, Config.saildown);
-            inputPacket.sailup  = GLFW_PRESS == glfwGetKey(Window.id, Config.sailup);
-            inputPacket.wheelleft = GLFW_PRESS == glfwGetKey(Window.id, Config.wheelleft);
-            inputPacket.wheelright = GLFW_PRESS == glfwGetKey(Window.id, Config.wheelright);
-            inputPacket.sailleft = GLFW_PRESS == glfwGetKey(Window.id, Config.sailleft);
-            inputPacket.sailright = GLFW_PRESS == glfwGetKey(Window.id, Config.sailright);
-            inputPacket.cannon_rotation = new Quaternionf();
-            // send inputs;
-            out.writeObject(inputPacket);
-            out.flush();
-
             long delta_ns = System.nanoTime() - start_time;
             double delta_ms = delta_ns / 1_000_000.0;
-            double fps = 1000.0 / delta_ms;
-            glfwSetWindowTitle(Window.id, WINDOW_NAME + "   fps: " + (int)fps);
+            double frametime = delta_ms / 1_000.0;
+            glfwSetWindowTitle(Window.id, WINDOW_NAME + "   " + "frametime: " + (int)delta_ms);
         }
         cleanup();
-    }
-    public static boolean connectToServer() {
-        try {
-            socket = new Socket();
-            socket.setTcpNoDelay(true);
-            socket.connect(new InetSocketAddress(Config.serverip, Config.serverport), Config.connectiontimout);
-            out = new ObjectOutputStream(socket.getOutputStream());
-            in = new ObjectInputStream(socket.getInputStream());
-            return true;
-        } catch (IOException e) {
-            return false;
-        }
     }
     public static void cleanup() throws IOException{
         Mesh.cleanupAll();

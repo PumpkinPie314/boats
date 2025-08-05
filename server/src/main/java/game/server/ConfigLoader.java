@@ -2,24 +2,20 @@ package game.server;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.stream.Collectors;;
+import java.util.stream.Collectors;
 
-public class Config {
-    public static float sail_speed = 1/5;
-    public static float turn_speed = 3;
-    public static float wheel_turn_speed = 1/500;
-    public static float sail_turn_speed = 1/20;
-    public static float mast_drop_speed = 1/10;
-    public static float mast_raise_speed = 1/20;
-    public static float wind_drag = 1/20;
-    public static float water_drag = 1/20;
-
-
-    public static void createDefault(){
+import game.common.Config;
+public class ConfigLoader {
+    public static void createDefault(String filepath){
         try {
             String default_config = ""; // TODO!
             Files.writeString(Paths.get(Main.CONFIG_FILE), default_config);
@@ -27,7 +23,8 @@ public class Config {
             System.err.println("could not write/create a new config file");
         }
     }
-    public static void load(String filepath) throws IOException {
+    public static Config load(String filepath) throws IOException {
+        Config newConfig = new Config();
         ArrayList<String> availableFields = Arrays.stream(Config.class.getFields()).map(Field::getName).collect(Collectors.toCollection(ArrayList::new));
         ArrayList<String> assignedFields = new ArrayList<>(){};
         Files.lines(Paths.get(filepath)).forEach(l -> {
@@ -39,8 +36,8 @@ public class Config {
             String rhs = parts[1].trim();
             try {
                 Field field = Config.class.getField(lhs);
-                if (field.getType() == float.class) {field.set(null, parseFloat(rhs)); System.out.println("set " + lhs + " to " + rhs + " (" + parseFloat(rhs) +")");}
-                else if (field.getType() == String.class) field.set(null, rhs);
+                if (field.getType() == float.class) {field.set(newConfig, parseFloat(rhs)); System.out.println("set " + lhs + " to " + rhs + " (" + parseFloat(rhs) +")");}
+                else if (field.getType() == String.class) field.set(newConfig, rhs);
                 else {
                     throw new IllegalArgumentException("config field type: " + field.getType().getName() + " is not supported yet!");
                 }
@@ -61,6 +58,7 @@ public class Config {
                 return "\n" + f + " = ";
             }).collect(Collectors.joining())
         );
+        return newConfig;
     }
     public static float parseFloat(String s) {
         if (s.contains("/")) {
@@ -73,5 +71,31 @@ public class Config {
         if (s.contains("pi")) return parseFloat(s.replace("pi", "").trim()) * (float) Math.PI;
         // if (s.contains("dt")) return parseFloat(s.replace("dt", "").trim()) * 1/Main.target_fps;
         return Float.parseFloat(s);
+    }
+    /**
+     * @param filepath the file to be watched
+     * @param dest the destination config, that will be updated when the file changes
+     * */
+    public static void watchForConfigChanged(String filepath, Config dest) {
+        try {
+            WatchService watcher = FileSystems.getDefault().newWatchService();
+            Paths.get(".").register(watcher, StandardWatchEventKinds.ENTRY_MODIFY);
+            while (true) {
+                WatchKey key = watcher.take();
+                for (WatchEvent<?> event : key.pollEvents()){
+                    if (!event.context().toString().equals(filepath)) continue; // some other file in the root was modified
+                    if (event.kind() == StandardWatchEventKinds.ENTRY_MODIFY) {
+                        System.out.println("config file change detected! reloading...");
+                        dest = ConfigLoader.load(filepath);
+                        System.out.println("config file reloaded!");
+                    }
+                }
+                key.reset();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
