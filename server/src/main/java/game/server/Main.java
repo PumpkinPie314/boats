@@ -28,8 +28,7 @@ public class Main {
             System.out.println("default config created");
         }
         gameState.config = ConfigLoader.load(CONFIG_FILE);
-        Config config = gameState.config;
-        new Thread(()->ConfigLoader.watchForConfigChanged(CONFIG_FILE, gameState.config)).start();;
+        new Thread(()->ConfigLoader.watchForConfigChanged(CONFIG_FILE, gameState)).start();;
 
         System.out.println("listening on port: " + PORT);
         
@@ -44,7 +43,8 @@ public class Main {
             // despawn boats from disconnected players
             for (int i = players.size() - 1; i >= 0; i--) {
                 if (players.get(i).socket.isClosed()) {
-                    System.out.println("player in slot " + i + " has disconnected. all higher players will be shifted down");
+                    System.out.println("player " + i + " has disconnected");
+                    if (i+1 > players.size()) System.out.println("player numbers shifted");
                     players.remove(i);
                     gameState.boats.remove(i);
                     synchronized (players_async) {
@@ -73,6 +73,7 @@ public class Main {
 
 
             // game logic
+            Config config = gameState.config;
                 // the players do all the logic for boat movement themselves on the client
                 // connonball logic
             
@@ -95,8 +96,9 @@ public class Main {
             double fps = 1000.0 / delta_ms;
             if (fps > config.fps) {
                 Thread.sleep(1000L/(long)config.fps - (long)delta_ms);
-                fps = config.fps;
-            }            
+            }
+            // System.out.println(1000L/(long)config.fps - (long)delta_ms);
+            // System.out.println(1000L/(long)gameState.config.fps - (long)delta_ms);
         }
     }
     public static void listenForClients() {

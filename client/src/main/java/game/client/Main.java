@@ -1,5 +1,6 @@
 package game.client;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.Field;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -8,6 +9,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.IntStream;
 
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
@@ -62,7 +64,8 @@ public class Main {
         
         System.out.println("loading textures...");
         Opengl.loadTexture("/textures/textures.png");
-        Opengl.loadTexture("/textures/textures.png");
+
+        Drawer.generateMeshes();
 
 
         Camera.setProjection(-10.0f, 10.0f, -10.0f, 10.0f, 100.0f);
@@ -87,6 +90,8 @@ public class Main {
         myboat.sectionHealth = new int[] {3,3,3,1,2,3};
         int myboat_index = -1; //the index of this client's boat in the gamestate.boats arraylist
         List<Vector3f> wakeFoam = new ArrayList<>();
+        Config last_config = new Config();
+        int ilerp = 0;
         while (!glfwWindowShouldClose(Window.id)) {
             long start_time = System.nanoTime();
             
@@ -94,6 +99,9 @@ public class Main {
             try {
                 myboat_index = in.readInt();
                 gameState = (GameState) in.readObject();
+                // the game speed is throttled here. 
+                // the thread is blocked while it waits for the next packet
+                // the server controls client fps
             } catch (ClassNotFoundException  e) {
                 System.err.println("failed parsing gamestate packet");
                 System.exit(1);
@@ -104,18 +112,30 @@ public class Main {
                 System.exit(0);
             }
             if (myboat_index == -1) {System.err.println("by boat index not set from server!");} 
-            
+            Config config = gameState.config;
+            for (Field field : config.getClass().getFields()) {
+                try {
+                    if (!field.get(last_config).equals(field.get(config))){
+                        System.out.println("config feild: " + field.getName() + " chanded from: " + field.get(last_config) +" to: " + field.get(config));
+                        field.set(last_config, field.get(config));
+                    }
+                } catch (IllegalArgumentException | IllegalAccessException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+
+            ilerp++;
+            // Vector3f up = new Vector3f(0,0,1).lerp(new Vector3f(1,0,0), (float)ilerp/100);
+            Vector3f up = new Vector3f(0,0,1);
             // position camera
             Camera.setPositionView(
                 new Vector3f(myboat.position).add(0, 2, 0), 
-                new Quaternionf().lookAlong(new Vector3f(0,-1,0), new Vector3f(0,0,1))
+                new Quaternionf().lookAlong(new Vector3f(0,-1,0), up)
             );
-
-            
 
             // collect inputs
             glfwPollEvents();
-            Config config = gameState.config;
             float dt = 1f/config.fps;
 
             if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.saildown)) myboat.mast_down_percent += config.mast_drop_speed * dt;
@@ -144,27 +164,14 @@ public class Main {
                 if (Math.abs(myboat.wheel_turn_percent) < 5 * config.wheel_turn_speed * dt) myboat.wheel_turn_percent = 0;
                 if (Math.abs(myboat.sail_turn_percent) < 5 * config.sail_turn_speed * dt) myboat.sail_turn_percent = 0;
             }
-
-                //snap to straight 
-            if (GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.saildown) &&
-                GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.sailup) && 
-                GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.wheelleft) && 
-                GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.wheelright) && 
-                GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.sailleft) && 
-                GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.sailright)
-            ){
-                if (Math.abs(myboat.wheel_turn_percent) < 5 * config.wheel_turn_speed * dt) myboat.wheel_turn_percent = 0;
-                if (Math.abs(myboat.sail_turn_percent) < 5 * config.sail_turn_speed * dt) myboat.sail_turn_percent = 0;
-            }
-
-
-
             Vector3f forward = new Vector3f(0,0,1).rotate(myboat.rotation);
             // gameState.wind_direction = myboat.rotation; // temp!
             myboat.velocity = forward.mul(myboat.mast_down_percent * config.sail_speed);
             myboat.rotation.integrate(dt, 0, myboat.wheel_turn_percent * config.turn_speed * -1,0);
 
             myboat.position.add(myboat.velocity.mul(dt));
+            myboat.position.x += dt/2;
+            myboat.position.z += dt/2;
 
 
             // send new updated boat
@@ -176,22 +183,6 @@ public class Main {
             glClearColor(0.0f, 0.5f,0.5f,1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             {
-                float[] vertex_data = {
-                    // x y z, r g b, s t
-                    5, 0, 5, 1, 1, 1, 0, 0,
-                    0, 0, 5, 1, 1 ,1, 1, 0,
-                    5, 0, 0, 1, 1, 1, 0, 1,
-                    0, 0, 0, 1, 1 ,1, 1, 1,
-                };
-                int[] indices = {
-                    0, 1, 3, 
-                    0, 2, 3,
-                };
-                
-                Mesh quad = new Mesh(vertex_data, indices);
-                quad.draw(new Matrix4f());
-            }
-            {
                 // all wake foam logic
                 // for (Boat boat : gameState.boats) {
                 //     wakeFoam.add(boat.position);
@@ -200,12 +191,34 @@ public class Main {
             }
             {
                 // draw boats
-                Drawer.drawhHull(myboat);
+                Drawer.drawhBoat(myboat);
                 for (int i = 0; i < gameState.boats.size(); i++) {
                     if (i == myboat_index) continue;// the client can draw her own boat
-                    Drawer.drawhHull(gameState.boats.get(i));
+                    Drawer.drawhBoat(gameState.boats.get(i));
                 }
             } 
+            {
+                float[] vertex_data = {
+                    // x y z, r g b, s t
+                    10, 0, 8, 0, 0,
+                    0, 0, 8, 1, 0,
+                    10, 0, 0, 0, 1,
+                    0, 0, 0, 1, 1,
+                };
+                int[] indices = {
+                    0, 1, 3, 
+                    0, 2, 3,
+                };
+                
+                Mesh quad = new Mesh(vertex_data, indices);
+                quad.draw(new Matrix4f());
+                quad.cleanup();
+            }
+            {
+                IntStream.range(0, 6).forEach(i -> Drawer.hullMeshes.get(i).draw(new Matrix4f().translate(5, 0, -5.0f)));
+                IntStream.range(6, 12).forEach(i -> Drawer.hullMeshes.get(i).draw(new Matrix4f().translate(0, 0, -5.0f)));
+                IntStream.range(12, 18).forEach(i -> Drawer.hullMeshes.get(i).draw(new Matrix4f().translate(-5, 0, -5.0f)));
+            }
             glfwSwapBuffers(Window.id);
 
 

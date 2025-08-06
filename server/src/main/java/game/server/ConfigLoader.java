@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 import game.common.Config;
+import game.common.GameState;
 public class ConfigLoader {
     public static void createDefault(String filepath){
         try {
@@ -69,14 +70,9 @@ public class ConfigLoader {
         }
         if (s.contains("tau")) return parseFloat(s.replace("tau", "").trim()) * (float) Math.TAU;
         if (s.contains("pi")) return parseFloat(s.replace("pi", "").trim()) * (float) Math.PI;
-        // if (s.contains("dt")) return parseFloat(s.replace("dt", "").trim()) * 1/Main.target_fps;
         return Float.parseFloat(s);
     }
-    /**
-     * @param filepath the file to be watched
-     * @param dest the destination config, that will be updated when the file changes
-     * */
-    public static void watchForConfigChanged(String filepath, Config dest) {
+    public static void watchForConfigChanged(String filepath, GameState dest) {
         try {
             WatchService watcher = FileSystems.getDefault().newWatchService();
             Paths.get(".").register(watcher, StandardWatchEventKinds.ENTRY_MODIFY);
@@ -86,7 +82,7 @@ public class ConfigLoader {
                     if (!event.context().toString().equals(filepath)) continue; // some other file in the root was modified
                     if (event.kind() == StandardWatchEventKinds.ENTRY_MODIFY) {
                         System.out.println("config file change detected! reloading...");
-                        dest = ConfigLoader.load(filepath);
+                        dest.config = ConfigLoader.load(filepath);
                         System.out.println("config file reloaded!");
                     }
                 }

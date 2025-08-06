@@ -43,8 +43,7 @@ public class Mesh {
         // it has attribute slots where it stores pointers to data. our vbo will be in the 0th attribute slot.
         vao = glCreateVertexArrays();
 
-        int position = glGetAttribLocation(Opengl.vertex_program, "position");
-        int color = glGetAttribLocation(Opengl.vertex_program, "color");
+        int position = glGetAttribLocation(Opengl.vertex_program, "position");;
         int texturePos = glGetAttribLocation(Opengl.vertex_program, "texturePos");
 
         // the vbo, or vertex buffer object, is just a buffer of floats that we want read as points. 
@@ -55,18 +54,14 @@ public class Mesh {
         vertex_buffer.flip();
         glNamedBufferData(vbo, vertex_buffer, GL_STATIC_DRAW); 
             //'GL_STATIC_DRAW' has nothing to do with drawing, and is only a hint to opengl about how often the values inside the buffer change
-        glVertexArrayVertexBuffer(vao,0, vbo, 0, 8 * Float.BYTES);
+        glVertexArrayVertexBuffer(vao,0, vbo, 0, 5 * Float.BYTES);
 
         glEnableVertexArrayAttrib(vao, position);
         glVertexArrayAttribFormat(vao, position, 3, GL_FLOAT, false, 0);
         glVertexArrayAttribBinding(vao, position, 0);
         
-        glEnableVertexArrayAttrib(vao, color);
-        glVertexArrayAttribFormat(vao, color, 3, GL_FLOAT, false, 3 * Float.BYTES);
-        glVertexArrayAttribBinding(vao, color, 0);
-        
         glEnableVertexArrayAttrib(vao, texturePos);
-        glVertexArrayAttribFormat(vao, texturePos, 2, GL_FLOAT, false, 6 * Float.BYTES);
+        glVertexArrayAttribFormat(vao, texturePos, 2, GL_FLOAT, false, 3 * Float.BYTES);
         glVertexArrayAttribBinding(vao, texturePos, 0);
 
         
@@ -87,6 +82,20 @@ public class Mesh {
         MemoryUtil.memFree(element_buffer);
 
         meshes.add(this);
+    }
+    public static Mesh newTriangle(float[] vertex_data){
+        if (vertex_data.length != 3 * 5) {
+            System.err.println("that is not a triangle");
+            System.exit(1);
+        }
+        return new Mesh(vertex_data, new int[]{0, 1, 2});
+    }
+    public static Mesh newQuad(float[] vertex_data){
+        if (vertex_data.length != 4 * 5) {
+            System.err.println("that is not a triangle");
+            System.exit(1);
+        }
+        return new Mesh(vertex_data, new int[]{0, 1, 3, 0, 2, 3});
     }
 
     public void draw(Matrix4f modelMatrix) {

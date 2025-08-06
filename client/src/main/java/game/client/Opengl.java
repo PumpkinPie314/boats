@@ -35,18 +35,23 @@ import static org.lwjgl.opengl.GL45.glTextureSubImage2D;
 import static org.lwjgl.stb.STBImage.stbi_failure_reason;
 import static org.lwjgl.stb.STBImage.stbi_image_free;
 import static org.lwjgl.stb.STBImage.stbi_load_from_memory;
+import static org.lwjgl.opengl.GL11.GL_BLEND;
 import static org.lwjgl.opengl.GL11.GL_CULL_FACE;
 import static org.lwjgl.opengl.GL11.GL_DEPTH_TEST;
 import static org.lwjgl.opengl.GL11.GL_NEAREST;
+import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
 import static org.lwjgl.opengl.GL11.GL_REPEAT;
 import static org.lwjgl.opengl.GL11.GL_RGBA;
 import static org.lwjgl.opengl.GL11.GL_RGBA8;
+import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
 import static org.lwjgl.opengl.GL11.GL_TEXTURE_2D;
 import static org.lwjgl.opengl.GL11.GL_TEXTURE_MAG_FILTER;
 import static org.lwjgl.opengl.GL11.GL_TEXTURE_MIN_FILTER;
 import static org.lwjgl.opengl.GL11.GL_TEXTURE_WRAP_S;
 import static org.lwjgl.opengl.GL11.GL_TEXTURE_WRAP_T;
 import static org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE;
+import static org.lwjgl.opengl.GL11.glBlendFunc;
+import static org.lwjgl.opengl.GL11.glDepthMask;
 import static org.lwjgl.opengl.GL11.glDisable;
 import static org.lwjgl.opengl.GL11.glEnable;
 
@@ -61,18 +66,25 @@ public class Opengl {
 
     static int textureSamplerUniform;
     static int textureId;
+    
+    static int atlasWidth;
+    static int atlasHeight;
 
     @SuppressWarnings("unused")
     private Opengl(){}//this class will never be instantiated.
 
     public static void init(){
         GL.createCapabilities();
+        // options
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glDisable(GL_CULL_FACE);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        
         // load shaders 
         fragment_program = ShaderFromResource(GL_FRAGMENT_SHADER, "/fragment.glsl");
         vertex_program = ShaderFromResource( GL_VERTEX_SHADER, "/vertex.glsl");
-        glEnable(GL_DEPTH_TEST);
-        glDisable(GL_CULL_FACE);
-
         System.out.println("Checking shader compilation status...");
         int[] status = new int[1];
         glGetProgramiv(vertex_program, GL_LINK_STATUS, status);
@@ -92,7 +104,7 @@ public class Opengl {
         } else {
             System.out.println("Fragment program compiled successfully");
         }
-
+        // setup pipeline
         pipeline = glGenProgramPipelines();
         glUseProgramStages(pipeline, GL_VERTEX_SHADER_BIT, vertex_program);
         glUseProgramStages(pipeline, GL_FRAGMENT_SHADER_BIT, fragment_program);
@@ -178,40 +190,42 @@ public class Opengl {
     }
     public static void loadTexture(String path) {
         
+        // create
         int id = glCreateTextures(GL_TEXTURE_2D);
-
+        // options
         glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
+        // read
         ByteBuffer rawImage = ImageBytesFromResource(path);
+        int[] width = new int[1];
+        int[] height = new int[1];
+        int[] num_channels = new int[1];
+        // decode
+        ByteBuffer decodedImage = stbi_load_from_memory(rawImage, width, height, num_channels, 4);
+        glTextureStorage2D(id, 1,  GL_RGBA8 , width[0], height[0]); // alocates gpu memory
+        glTextureSubImage2D(id, 0, 0, 0, width[0], height[0], 
+                            GL_RGBA, GL_UNSIGNED_BYTE, decodedImage); // upload decoded image to gpu
+        atlasWidth = width[0];
+        atlasHeight = height[0];
+
+        stbi_image_free(decodedImage); // frees from cpu memory
+        textureId = id;
+        // bind and use
+        glBindTextureUnit(0, textureId);
+        glProgramUniform1i(fragment_program, textureSamplerUniform, 0);
+
+        // defense
         if (rawImage == null) {
             System.err.println("Failed to load raw image data from: " + path);
             return;
         }
-        System.out.println("raw image data:\n" + rawImage);
-
-        int[] width = new int[1];
-        int[] height = new int[1];
-        int[] num_channels = new int[1];
-
-        ByteBuffer decodedImage = stbi_load_from_memory(rawImage, width, height, num_channels, 4);
         if (decodedImage == null) {
             System.err.println("STB failed to decode image: " + stbi_failure_reason());
             return;
         }
-        
-        System.out.println("decoded image data: \n"+ decodedImage + "\n" + width[0] + " " + height[0] + " " + num_channels[0]); 
-        glTextureStorage2D(id, 1,  GL_RGBA8 , width[0], height[0]); // alocates gpu memory
-        glTextureSubImage2D(id, 0, 0, 0, width[0], height[0], 
-                            GL_RGBA, GL_UNSIGNED_BYTE, decodedImage); // upload decoded image to gpu - use GL_RGBA not GL_RGBA8
-
-        stbi_image_free(decodedImage); // frees from cpu memory
-        textureId = id;
-        
-        glBindTextureUnit(0, textureId);
-        glProgramUniform1i(fragment_program, textureSamplerUniform, 0);
     }
     public static Vector3f getScreenSpace(Vector3f position) {
         Vector3f screenSpace = new Vector3f();
