@@ -9,6 +9,7 @@ import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
 
+import game.common.Config;
 import game.common.GameState;
 
 public class Main {
@@ -27,6 +28,7 @@ public class Main {
             System.out.println("default config created");
         }
         gameState.config = ConfigLoader.load(CONFIG_FILE);
+        Config config = gameState.config;
         new Thread(()->ConfigLoader.watchForConfigChanged(CONFIG_FILE, gameState.config)).start();;
 
         System.out.println("listening on port: " + PORT);
@@ -91,9 +93,9 @@ public class Main {
             long delta_ns = System.nanoTime() - start_time;
             double delta_ms = delta_ns / 1_000_000.0;
             double fps = 1000.0 / delta_ms;
-            if (fps > config.) {
-                Thread.sleep(1000L/target_fps - (long)delta_ms);
-                fps = target_fps;
+            if (fps > config.fps) {
+                Thread.sleep(1000L/(long)config.fps - (long)delta_ms);
+                fps = config.fps;
             }            
         }
     }
