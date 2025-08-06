@@ -44,7 +44,10 @@ public class Main {
         File config_file = new File(CONFIG_FILE);
         if (!config_file.exists()) {
             System.out.println("no config found...");
+            System.out.println("no config found...");
             ClientConfig.createDefault();
+            System.out.println("default config created. make sure to change the ip and port if you are playing online!");
+            System.exit(1);
             System.out.println("default config created. make sure to change the ip and port if you are playing online!");
             System.exit(1);
         }
@@ -58,6 +61,7 @@ public class Main {
         
         
         System.out.println("loading textures...");
+        Opengl.loadTexture("/textures/textures.png");
         Opengl.loadTexture("/textures/textures.png");
 
 
@@ -129,6 +133,18 @@ public class Main {
             if (myboat.sail_turn_percent > 1f) myboat.sail_turn_percent = 1f;
             if (myboat.sail_turn_percent < -1f) myboat.sail_turn_percent = -1f;
             myboat.cannonRotation = new Quaternionf();
+                //snap to straight 
+            if (GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.saildown) &&
+                GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.sailup) && 
+                GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.wheelleft) && 
+                GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.wheelright) && 
+                GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.sailleft) && 
+                GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.sailright)
+            ){
+                if (Math.abs(myboat.wheel_turn_percent) < 5 * config.wheel_turn_speed * dt) myboat.wheel_turn_percent = 0;
+                if (Math.abs(myboat.sail_turn_percent) < 5 * config.sail_turn_speed * dt) myboat.sail_turn_percent = 0;
+            }
+
                 //snap to straight 
             if (GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.saildown) &&
                 GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.sailup) && 
