@@ -19,6 +19,7 @@ import game.common.Boat;
 import game.common.Config;
 import game.common.GameState;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
+import static org.lwjgl.glfw.GLFW.glfwGetCursorPos;
 import static org.lwjgl.glfw.GLFW.glfwGetKey;
 import static org.lwjgl.glfw.GLFW.glfwPollEvents;
 import static org.lwjgl.glfw.GLFW.glfwSetWindowTitle;
@@ -55,21 +56,6 @@ public class Main {
         }
         ClientConfig.load(CONFIG_FILE);
         
-        System.out.println("making the window...");
-        Window.init();
-        
-        System.out.println("loading shaders...");
-        Opengl.init();
-        
-        
-        System.out.println("loading textures...");
-        Opengl.loadTexture("/textures/textures.png");
-
-        Drawer.generateMeshes();
-
-
-        Camera.setProjection(-10.0f, 10.0f, -10.0f, 10.0f, 100.0f);
-        
         // connect to server
         System.out.println("connecting to server ip:" + ClientConfig.serverip + " on port: "+ ClientConfig.serverport+ "...");
         try {
@@ -84,16 +70,31 @@ public class Main {
             cleanup();
             System.exit(1);
         }
+
+        System.out.println("making the window...");
+        Window.init();
         
+        System.out.println("loading shaders...");
+        Opengl.init();
+        
+        System.out.println("loading textures...");
+        Opengl.loadTexture("/textures/textures.png");
+
+        // mesh settup
+        Drawer.generateMeshes();
+
+        // camera frustum
+        Opengl.projectionMatrix.setOrtho(-10.0f, 10.0f, -10.0f, 10.0f, -100.0f, 100.0f);
+
         System.out.println("game started!");
         Boat myboat = new Boat();
         myboat.sectionHealth = new int[] {3,3,3,1,2,3};
         int myboat_index = -1; //the index of this client's boat in the gamestate.boats arraylist
         List<Vector3f> wakeFoam = new ArrayList<>();
         Config last_config = new Config();
-        int ilerp = 0;
         while (!glfwWindowShouldClose(Window.id)) {
             long start_time = System.nanoTime();
+            Opengl.updateMatrixUniforms();
             
             // parse incoming game state from server
             try {
@@ -120,19 +121,9 @@ public class Main {
                         field.set(last_config, field.get(config));
                     }
                 } catch (IllegalArgumentException | IllegalAccessException e) {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
             }
-
-            ilerp++;
-            // Vector3f up = new Vector3f(0,0,1).lerp(new Vector3f(1,0,0), (float)ilerp/100);
-            Vector3f up = new Vector3f(0,0,1);
-            // position camera
-            Camera.setPositionView(
-                new Vector3f(myboat.position).add(0, 2, 0), 
-                new Quaternionf().lookAlong(new Vector3f(0,-1,0), up)
-            );
 
             // collect inputs
             glfwPollEvents();
@@ -144,6 +135,19 @@ public class Main {
             if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.wheelright)) myboat.wheel_turn_percent += config.wheel_turn_speed * dt;
             if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.sailleft)) myboat.sail_turn_percent -= config.sail_turn_speed * dt;
             if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.sailright)) myboat.sail_turn_percent += config.sail_turn_speed * dt;
+            myboat.cannonRotation = new Quaternionf();
+            Vector3f mouse_screen_space = new Vector3f();
+            { /* cannon aiming */
+                double[] mouse_x_buff = new double[1];
+                double[] mouse_y_buff = new double[1];
+                glfwGetCursorPos(Window.id, mouse_x_buff, mouse_y_buff);
+                float mx = (float) mouse_x_buff[0];
+                float my = (float) mouse_y_buff[0];
+                mx = ((mx/Window.width)-0.5f)*2;
+                my = -((my/Window.height)-0.5f)*2;
+                mouse_screen_space = new Vector3f(mx, 0, my);
+
+            }
 
             // update boat
             if (myboat.mast_down_percent > 1f) myboat.mast_down_percent = 1f;
@@ -152,7 +156,6 @@ public class Main {
             if (myboat.wheel_turn_percent < -1f) myboat.wheel_turn_percent = -1f;
             if (myboat.sail_turn_percent > 1f) myboat.sail_turn_percent = 1f;
             if (myboat.sail_turn_percent < -1f) myboat.sail_turn_percent = -1f;
-            myboat.cannonRotation = new Quaternionf();
                 //snap to straight 
             if (GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.saildown) &&
                 GLFW_PRESS != glfwGetKey(Window.id, ClientConfig.sailup) && 
@@ -170,9 +173,15 @@ public class Main {
             myboat.rotation.integrate(dt, 0, myboat.wheel_turn_percent * config.turn_speed * -1,0);
 
             myboat.position.add(myboat.velocity.mul(dt));
-            myboat.position.x += dt/2;
-            myboat.position.z += dt/2;
 
+            
+            // position camera
+            Opengl.viewMatrix.identity()
+                .translate(0, 0, -3)
+                .rotateX((mouse_screen_space.z+1)/2*(float)Math.PI/2)
+                .rotateY((float)mouse_screen_space.x*(float)Math.PI + (float)Math.PI)
+                .rotate(new Quaternionf(myboat.rotation).invert())
+                .translate(new Vector3f(myboat.position).negate());
 
             // send new updated boat
             out.reset();
@@ -187,7 +196,6 @@ public class Main {
                 // for (Boat boat : gameState.boats) {
                 //     wakeFoam.add(boat.position);
                 // }
-
             }
             {
                 // draw boats
@@ -197,13 +205,13 @@ public class Main {
                     Drawer.drawhBoat(gameState.boats.get(i));
                 }
             } 
-            {
+            { // temp quad
                 float[] vertex_data = {
                     // x y z, r g b, s t
-                    10, 0, 8, 0, 0,
-                    0, 0, 8, 1, 0,
-                    10, 0, 0, 0, 1,
-                    0, 0, 0, 1, 1,
+                    10, 0, 8, 1, 1,
+                    0, 0, 8, 0, 1,
+                    10, 0, 0, 1, 0,
+                    0, 0, 0, 0, 0,
                 };
                 int[] indices = {
                     0, 1, 3, 
@@ -214,7 +222,7 @@ public class Main {
                 quad.draw(new Matrix4f());
                 quad.cleanup();
             }
-            {
+            { // temp boat meshes
                 IntStream.range(0, 6).forEach(i -> Drawer.hullMeshes.get(i).draw(new Matrix4f().translate(5, 0, -5.0f)));
                 IntStream.range(6, 12).forEach(i -> Drawer.hullMeshes.get(i).draw(new Matrix4f().translate(0, 0, -5.0f)));
                 IntStream.range(12, 18).forEach(i -> Drawer.hullMeshes.get(i).draw(new Matrix4f().translate(-5, 0, -5.0f)));

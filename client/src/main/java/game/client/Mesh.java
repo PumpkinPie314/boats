@@ -17,6 +17,7 @@ import static org.lwjgl.opengl.GL20.glGetAttribLocation;
 import static org.lwjgl.opengl.GL20.glGetUniformLocation;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
 import static org.lwjgl.opengl.GL30.glDeleteVertexArrays;
+import static org.lwjgl.opengl.GL41.glProgramUniformMatrix4fv;
 import static org.lwjgl.opengl.GL45.glCreateBuffers;
 import static org.lwjgl.opengl.GL45.glCreateVertexArrays;
 import static org.lwjgl.opengl.GL45.glEnableVertexArrayAttrib;
@@ -99,7 +100,8 @@ public class Mesh {
     }
 
     public void draw(Matrix4f modelMatrix) {
-        Opengl.setModelMatrix(modelMatrix);
+        Opengl.modelMatrix = modelMatrix;
+        glProgramUniformMatrix4fv(Opengl.vertex_program, Opengl.modelMatrixLocation, false, modelMatrix.get(new  float[16]));
         glBindVertexArray(this.vao);
         glDrawElements(GL_TRIANGLES, this.size , GL_UNSIGNED_INT, 0);
     }
@@ -111,6 +113,7 @@ public class Mesh {
         glDeleteBuffers(vbo);
         glDeleteBuffers(ebo);
         glDeleteVertexArrays(vao);
+        Mesh.meshes.remove(this);
     }
 
     public static void cleanupAll() {

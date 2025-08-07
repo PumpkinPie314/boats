@@ -60,9 +60,13 @@ public class Opengl {
     static int fragment_program;
     static int pipeline;
 
-    static int modelMatrix;     
-    static int viewMatrix;      
-    static int projectionMatrix;
+    static int modelMatrixLocation;
+    static int viewMatrixLocation;      
+    static int projectionMatrixLocation;
+
+    static Matrix4f modelMatrix = new Matrix4f();
+    static Matrix4f viewMatrix = new Matrix4f();
+    static Matrix4f projectionMatrix = new Matrix4f();
 
     static int textureSamplerUniform;
     static int textureId;
@@ -110,9 +114,9 @@ public class Opengl {
         glUseProgramStages(pipeline, GL_FRAGMENT_SHADER_BIT, fragment_program);
         glBindProgramPipeline(pipeline);
         // cache uniform locations
-        modelMatrix = glGetUniformLocation(vertex_program, "modelMatrix"); 
-        viewMatrix = glGetUniformLocation(vertex_program, "viewMatrix");
-        projectionMatrix = glGetUniformLocation(vertex_program, "projectionMatrix");
+        modelMatrixLocation = glGetUniformLocation(vertex_program, "modelMatrix"); 
+        viewMatrixLocation = glGetUniformLocation(vertex_program, "viewMatrix");
+        projectionMatrixLocation = glGetUniformLocation(vertex_program, "projectionMatrix");
         textureSamplerUniform = glGetUniformLocation(Opengl.fragment_program, "textureSampler");
     }
     public static int ShaderFromResource(int type, String path) {
@@ -137,59 +141,12 @@ public class Opengl {
             return null;
         }
     }
-    public static void setModelMatrix(Matrix4f matrix) {
-        glProgramUniformMatrix4fv(
-            vertex_program, 
-            modelMatrix,
-            false, // transpose
-            matrix.get(new  float[16])
-        );
-    }
-    public static Matrix4f getModelMatrix() {
-        FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
-        glGetUniformfv(
-            vertex_program,
-            modelMatrix,
-            buffer 
-        );
-        return new Matrix4f(buffer);
-    }
-    public static void setViewMatrix(Matrix4f matrix) {
-        glProgramUniformMatrix4fv(
-            vertex_program, 
-            viewMatrix,
-            false, // transpose
-            matrix.get(new  float[16])
-        );
-    }
-    public static Matrix4f getViewMatrix() {
-        FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
-        glGetUniformfv(
-            vertex_program,
-            viewMatrix,
-            buffer 
-        );
-        return new Matrix4f(buffer);
-    }
-    public static void setProjectionMatrix(Matrix4f matrix) {
-        glProgramUniformMatrix4fv(
-            vertex_program, 
-            projectionMatrix,
-            false, // transpose
-            matrix.get(new  float[16])
-        );    
-    }
-    public static Matrix4f getProjectioMatrix() {
-        FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
-        glGetUniformfv(
-            vertex_program,
-            projectionMatrix,
-            buffer 
-        );
-        return new Matrix4f(buffer);
+    public static void updateMatrixUniforms(){
+        glProgramUniformMatrix4fv(vertex_program, projectionMatrixLocation, false, projectionMatrix.get(new  float[16]));
+        glProgramUniformMatrix4fv(vertex_program, viewMatrixLocation, false, viewMatrix.get(new  float[16]));
+        glProgramUniformMatrix4fv(vertex_program, modelMatrixLocation, false, modelMatrix.get(new  float[16]));
     }
     public static void loadTexture(String path) {
-        
         // create
         int id = glCreateTextures(GL_TEXTURE_2D);
         // options
@@ -226,15 +183,6 @@ public class Opengl {
             System.err.println("STB failed to decode image: " + stbi_failure_reason());
             return;
         }
-    }
-    public static Vector3f getScreenSpace(Vector3f position) {
-        Vector3f screenSpace = new Vector3f();
-        new Vector4f(position, 1.0f)
-            .mul(Opengl.getModelMatrix())
-            .mul(Opengl.getViewMatrix())
-            .mul(Opengl.getProjectioMatrix())
-            .xyz(screenSpace);
-        return screenSpace;
     }
 
     public static void cleanup() {

@@ -9,6 +9,8 @@ import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.joml.Quaternionf;
+
 import game.common.Config;
 import game.common.GameState;
 
@@ -71,11 +73,11 @@ public class Main {
                 // System.out.println("player " + i + "'s position has ben set to: "+ gameState.boats.get(i).position);
             }
 
-
-            // game logic
+            // update config 
             Config config = gameState.config;
-                // the players do all the logic for boat movement themselves on the client
-                // connonball logic
+        
+            // game logic
+            gameState.wind_direction = new Quaternionf();
             
 
 
