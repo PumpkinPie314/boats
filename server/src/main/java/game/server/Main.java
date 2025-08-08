@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 import game.common.Config;
 import game.common.GameState;
@@ -37,8 +38,11 @@ public class Main {
         // a little thread who just waits for client connections and puts them in the players list
         new Thread(()->listenForClients()).start();
         List<Player> players = new ArrayList<>();
+
+        gameState.tick_current = 0;
         while (serverRunning) {
             long start_time = System.nanoTime(); 
+            gameState.tick_current += 1;
             synchronized (players_async) {
                 players = new ArrayList<>(players_async);
             }
@@ -77,7 +81,7 @@ public class Main {
             Config config = gameState.config;
         
             // game logic
-            gameState.wind_direction = new Quaternionf();
+            gameState.wind = new Vector3f(0,0,1);
             
 
 

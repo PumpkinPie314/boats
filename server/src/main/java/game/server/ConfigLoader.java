@@ -38,6 +38,7 @@ public class ConfigLoader {
             try {
                 Field field = Config.class.getField(lhs);
                 if (field.getType() == float.class) {field.set(newConfig, parseFloat(rhs)); System.out.println("set " + lhs + " to " + rhs + " (" + parseFloat(rhs) +")");}
+                else if (field.getType() == long.class) {field.set(newConfig, Long.parseLong(rhs)); System.out.println("set " + lhs + " to " + rhs + " (" + Long.parseLong(rhs) +")");}
                 else if (field.getType() == String.class) field.set(newConfig, rhs);
                 else {
                     throw new IllegalArgumentException("config field type: " + field.getType().getName() + " is not supported yet!");

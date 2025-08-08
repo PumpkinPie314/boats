@@ -9,6 +9,7 @@ import org.joml.Matrix4f;
 import static org.lwjgl.opengl.GL11.GL_FLOAT;
 import static org.lwjgl.opengl.GL11.GL_LINES;
 import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
+import static org.lwjgl.opengl.GL11.GL_TRIANGLE_STRIP;
 import static org.lwjgl.opengl.GL11.GL_UNSIGNED_INT;
 import static org.lwjgl.opengl.GL11.glDrawElements;
 import static org.lwjgl.opengl.GL15.GL_STATIC_DRAW;
@@ -84,26 +85,17 @@ public class Mesh {
 
         meshes.add(this);
     }
-    public static Mesh newTriangle(float[] vertex_data){
-        if (vertex_data.length != 3 * 5) {
-            System.err.println("that is not a triangle");
-            System.exit(1);
-        }
-        return new Mesh(vertex_data, new int[]{0, 1, 2});
-    }
-    public static Mesh newQuad(float[] vertex_data){
-        if (vertex_data.length != 4 * 5) {
-            System.err.println("that is not a triangle");
-            System.exit(1);
-        }
-        return new Mesh(vertex_data, new int[]{0, 1, 3, 0, 2, 3});
-    }
-
     public void draw(Matrix4f modelMatrix) {
         Opengl.modelMatrix = modelMatrix;
         glProgramUniformMatrix4fv(Opengl.vertex_program, Opengl.modelMatrixLocation, false, modelMatrix.get(new  float[16]));
         glBindVertexArray(this.vao);
         glDrawElements(GL_TRIANGLES, this.size , GL_UNSIGNED_INT, 0);
+    }
+    public void drawStrip(Matrix4f modelMatrix) {
+        Opengl.modelMatrix = modelMatrix;
+        glProgramUniformMatrix4fv(Opengl.vertex_program, Opengl.modelMatrixLocation, false, modelMatrix.get(new  float[16]));
+        glBindVertexArray(this.vao);
+        glDrawElements(GL_TRIANGLE_STRIP, this.size , GL_UNSIGNED_INT, 0);
     }
     public void drawLines() {
         glBindVertexArray(this.vao);

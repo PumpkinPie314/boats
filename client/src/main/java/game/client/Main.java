@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
 
+import org.joml.AxisAngle4f;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -176,13 +177,16 @@ public class Main {
 
             
             // position camera
-            Opengl.viewMatrix.identity()
-                .translate(0, 0, -3)
-                .rotateX((mouse_screen_space.z+1)/2*(float)Math.PI/2)
-                .rotateY((float)mouse_screen_space.x*(float)Math.PI + (float)Math.PI)
-                .rotate(new Quaternionf(myboat.rotation).invert())
-                .translate(new Vector3f(myboat.position).negate());
-
+            {
+                float tau = (float) Math.TAU;
+                Opengl.viewMatrix.identity()
+                    .translate(0, 0, -3)
+                    .rotateX((-mouse_screen_space.z+3)*(1f/16)*tau) // -1,1 -> (1/8)tau,(1/4)tau   aka 45°,90°
+                    // .rotateX((-mouse_screen_space.z)*(1f/4)*tau) // -1,1 -> (1/8)tau,(1/4)tau   aka 45°,90°
+                    .rotateY((mouse_screen_space.x+1f)*(1f/2)*tau) // -1,1 -> 0,tau
+                    .rotate(new Quaternionf(myboat.rotation).invert())
+                    .translate(new Vector3f(myboat.position).negate());
+            }
             // send new updated boat
             out.reset();
             out.writeObject(myboat);
@@ -199,10 +203,10 @@ public class Main {
             }
             {
                 // draw boats
-                Drawer.drawhBoat(myboat);
+                Drawer.drawBoat(myboat);
                 for (int i = 0; i < gameState.boats.size(); i++) {
                     if (i == myboat_index) continue;// the client can draw her own boat
-                    Drawer.drawhBoat(gameState.boats.get(i));
+                    Drawer.drawBoat(gameState.boats.get(i));
                 }
             } 
             { // temp quad
