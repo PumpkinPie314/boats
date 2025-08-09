@@ -9,9 +9,13 @@ public class Config implements Serializable{
     public float wheel_turn_speed = 0;
     public float mast_drop_speed = 0;
     public float mast_raise_speed = 0;
-    public float cannon_angle_limit = 0;
     public float sail_turn_speed = 0;
     public float sail_angle_limit = 0;
     public float wind_drag = 0;
     public float water_drag = 0;
+    public float cannon_angle_limit = 0;
+    public float cannon_fire_cooldown = 0;
+    public float cannon_speed = 0;
+    public float gravity = 0;
+    
 }

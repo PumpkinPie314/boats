@@ -6,12 +6,12 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
 import java.util.stream.IntStream;
-
-import org.joml.AxisAngle4f;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -19,6 +19,8 @@ import org.joml.Vector3f;
 import game.common.Boat;
 import game.common.Config;
 import game.common.GameState;
+
+import static org.lwjgl.glfw.GLFW.GLFW_KEY_SPACE;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.glfwGetCursorPos;
 import static org.lwjgl.glfw.GLFW.glfwGetKey;
@@ -31,7 +33,6 @@ import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.glClear;
 import static org.lwjgl.opengl.GL11.glClearColor;
 
-import static org.lwjgl.opengl.GL45.glBindTextureUnit;
 @SuppressWarnings("BusyWait") // allows sleep() in a loop
 public class Main {
     public static final String WINDOW_NAME = "Game";
@@ -40,7 +41,7 @@ public class Main {
     public static Socket socket;
     public static ObjectOutputStream out;
     public static ObjectInputStream in;
-    public static Random rand = new Random();
+    public static Deque<CannonBall> cannonBalls = new ArrayDeque<>();
     public static void main(String[] args) throws InterruptedException , IOException {
         System.out.println("hello from client!");
 
@@ -48,10 +49,7 @@ public class Main {
         File config_file = new File(CONFIG_FILE);
         if (!config_file.exists()) {
             System.out.println("no config found...");
-            System.out.println("no config found...");
             ClientConfig.createDefault();
-            System.out.println("default config created. make sure to change the ip and port if you are playing online!");
-            System.exit(1);
             System.out.println("default config created. make sure to change the ip and port if you are playing online!");
             System.exit(1);
         }
@@ -86,12 +84,12 @@ public class Main {
 
         // camera frustum
         Opengl.projectionMatrix.setOrtho(-10.0f, 10.0f, -10.0f, 10.0f, -100.0f, 100.0f);
+        // Opengl.projectionMatrix.setOrtho(-3.0f, 3.0f, -3.0f, 3f, -100.0f, 100.0f);
 
         System.out.println("game started!");
         Boat myboat = new Boat();
         myboat.sectionHealth = new int[] {3,3,3,1,2,3};
         int myboat_index = -1; //the index of this client's boat in the gamestate.boats arraylist
-        List<Vector3f> wakeFoam = new ArrayList<>();
         Config last_config = new Config();
         while (!glfwWindowShouldClose(Window.id)) {
             long start_time = System.nanoTime();
@@ -118,17 +116,56 @@ public class Main {
             for (Field field : config.getClass().getFields()) {
                 try {
                     if (!field.get(last_config).equals(field.get(config))){
-                        System.out.println("config feild: " + field.getName() + " chanded from: " + field.get(last_config) +" to: " + field.get(config));
+                        System.out.println("config feild: " + field.getName() + " changed from: " + field.get(last_config) +" to: " + field.get(config));
                         field.set(last_config, field.get(config));
                     }
                 } catch (IllegalArgumentException | IllegalAccessException e) {
                     e.printStackTrace();
                 }
             }
+            float dt = 1f/config.fps;
+
+            // create connonballs
+            int ticks_covered = cannonBalls.isEmpty() ? 0 :cannonBalls.peekFirst().tick_fired;
+            for (Boat boat : gameState.boats){
+                if (boat.lastFired.tick_fired > ticks_covered){
+                    CannonBall cb = new CannonBall();
+                    cb.owner = boat;
+                    cb.tick_fired = boat.lastFired.tick_fired;
+                    cb.position = new Vector3f(boat.lastFired.position);
+                    cb.velocity = new Vector3f(boat.lastFired.velocity);
+
+                    // fast forward
+                    int missed_tick_count = gameState.tick_current - boat.lastFired.tick_fired;
+                    for (int _i = 0; _i < missed_tick_count  ; _i++) {
+                        cb.position
+                            .add(new Vector3f(cb.velocity).mul(dt))
+                            .add(new Vector3f(0,-1,0).mul(config.gravity * dt));
+                    }
+                    cannonBalls.addFirst(cb);
+                        /*
+                         * this is backwards to how you would normally use a queue: adding the the front and removing from the back.
+                         * it is this way because removed cannonballs are more likely to be older. 
+                         * this way the array only shifts cannonballs older then it, which is usualy a lot less
+                         */
+                };
+            }
+            
+            // update cannonballs        
+            Iterator<CannonBall> iterator = cannonBalls.iterator();
+            while (iterator.hasNext()) {
+                CannonBall cb = iterator.next();
+                cb.position
+                    .add(new Vector3f(cb.velocity).mul(dt))
+                    .add(new Vector3f(0,-1,0).mul(config.gravity * dt));
+
+                if (cb.position.y < -1) {
+                    iterator.remove();
+                }
+            }
 
             // collect inputs
             glfwPollEvents();
-            float dt = 1f/config.fps;
 
             if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.saildown)) myboat.mast_down_percent += config.mast_drop_speed * dt;
             if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.sailup)) myboat.mast_down_percent -= config.mast_raise_speed * dt;
@@ -136,9 +173,8 @@ public class Main {
             if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.wheelright)) myboat.wheel_turn_percent += config.wheel_turn_speed * dt;
             if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.sailleft)) myboat.sail_turn_percent -= config.sail_turn_speed * dt;
             if (GLFW_PRESS == glfwGetKey(Window.id, ClientConfig.sailright)) myboat.sail_turn_percent += config.sail_turn_speed * dt;
-            myboat.cannonRotation = new Quaternionf();
             Vector3f mouse_screen_space = new Vector3f();
-            { /* cannon aiming */
+            { /* get mouse inputs */
                 double[] mouse_x_buff = new double[1];
                 double[] mouse_y_buff = new double[1];
                 glfwGetCursorPos(Window.id, mouse_x_buff, mouse_y_buff);
@@ -168,26 +204,48 @@ public class Main {
                 if (Math.abs(myboat.wheel_turn_percent) < 5 * config.wheel_turn_speed * dt) myboat.wheel_turn_percent = 0;
                 if (Math.abs(myboat.sail_turn_percent) < 5 * config.sail_turn_speed * dt) myboat.sail_turn_percent = 0;
             }
+            // boat movement
             Vector3f forward = new Vector3f(0,0,1).rotate(myboat.rotation);
-            // gameState.wind_direction = myboat.rotation; // temp!
-            myboat.velocity = forward.mul(myboat.mast_down_percent * config.sail_speed);
+            myboat.velocity = new Vector3f(forward).mul(myboat.mast_down_percent * config.sail_speed);
             myboat.rotation.integrate(dt, 0, myboat.wheel_turn_percent * config.turn_speed * -1,0);
 
             myboat.position.add(myboat.velocity.mul(dt));
 
-            
-            // position camera
-            {
-                float tau = (float) Math.TAU;
-                Opengl.viewMatrix.identity()
-                    .translate(0, 0, -3)
-                    .rotateX((-mouse_screen_space.z+3)*(1f/16)*tau) // -1,1 -> (1/8)tau,(1/4)tau   aka 45°,90°
-                    // .rotateX((-mouse_screen_space.z)*(1f/4)*tau) // -1,1 -> (1/8)tau,(1/4)tau   aka 45°,90°
-                    .rotateY((mouse_screen_space.x+1f)*(1f/2)*tau) // -1,1 -> 0,tau
-                    .rotate(new Quaternionf(myboat.rotation).invert())
-                    .translate(new Vector3f(myboat.position).negate());
+            // aiming
+            float tau = (float) Math.TAU;
+            float yaw = (-mouse_screen_space.x-1f)*(1f/2)*tau; // -1,1 -> -tau,0
+            float pitch = (mouse_screen_space.z-3)*(1f/16)*tau; // -1,1 -> (1/8)tau,(1/4)tau   aka 45°,90°
+            { // cannon angle
+                float cannon_angle = yaw+tau/2; // forwards
+                if (cannon_angle > 0          && cannon_angle <  (1f/4)*tau - config.cannon_angle_limit) cannon_angle =  (1f/4)*tau - config.cannon_angle_limit; // front left
+                if (cannon_angle < 0          && cannon_angle > -(1f/4)*tau + config.cannon_angle_limit) cannon_angle = -(1f/4)*tau + config.cannon_angle_limit; // front right
+                if (cannon_angle < (1f/2)*tau && cannon_angle >  (1f/4)*tau + config.cannon_angle_limit) cannon_angle =  (1f/4)*tau + config.cannon_angle_limit; // back left
+                if (cannon_angle >-(1f/2)*tau && cannon_angle < -(1f/4)*tau - config.cannon_angle_limit) cannon_angle = -(1f/4)*tau - config.cannon_angle_limit; // back right
+                
+                float cannon_height = (mouse_screen_space.z-1)*(1f/8)*tau ; // (1/8)tau,(1/4)tau -> 0,(1/8)tau
+                myboat.cannonRotation = new Quaternionf(myboat.rotation)
+                    .rotateAxis(cannon_angle, new Vector3f(0,1,0))
+                    .rotateAxis(cannon_height, new Vector3f(1,0,0));
             }
-            // send new updated boat
+            // shooting 
+            if (
+                GLFW_PRESS == glfwGetKey(Window.id, GLFW_KEY_SPACE)
+                //  && gameState.tick_current - myboat.lastFired.tick_fired > config.cannon_fire_cooldown * 1/dt
+            ) {
+                myboat.lastFired.tick_fired = gameState.tick_current;
+                myboat.lastFired.position = new Vector3f(myboat.position);
+                myboat.lastFired.velocity = new Vector3f(0,0,1).rotate(new Quaternionf(myboat.cannonRotation)).mul(config.cannon_speed);
+            }
+            // System.out.println(myboat.lastFired.position);
+
+            // position camera
+            Opengl.viewMatrix.identity()
+                .translate(0, 0, -3)
+                .rotateX(-pitch) 
+                .rotateY(-yaw)
+                .rotate(new Quaternionf(myboat.rotation).invert())
+                .translate(new Vector3f(myboat.position).negate());
+            // send new updated boat to server
             out.reset();
             out.writeObject(myboat);
             out.flush();
@@ -195,20 +253,14 @@ public class Main {
             // draw
             glClearColor(0.0f, 0.5f,0.5f,1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            {
-                // all wake foam logic
-                // for (Boat boat : gameState.boats) {
-                //     wakeFoam.add(boat.position);
-                // }
+            // draw boats
+            // Drawer.drawBoat(myboat);
+            for (int i = 0; i < gameState.boats.size(); i++) {
+                // if (i == myboat_index) continue;// the client can draw her own boat
+                Drawer.drawBoat(gameState.boats.get(i));
             }
-            {
-                // draw boats
-                Drawer.drawBoat(myboat);
-                for (int i = 0; i < gameState.boats.size(); i++) {
-                    if (i == myboat_index) continue;// the client can draw her own boat
-                    Drawer.drawBoat(gameState.boats.get(i));
-                }
-            } 
+            // draw cannonballs
+            cannonBalls.stream().forEach(Drawer::drawCannonBall);
             { // temp quad
                 float[] vertex_data = {
                     // x y z, r g b, s t

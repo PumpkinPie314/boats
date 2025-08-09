@@ -11,13 +11,14 @@ import org.lwjgl.glfw.GLFW;
 public class ClientConfig {
     public static String serverip;
     public static int serverport;
-    public static int connectiontimout;
     public static int sailup;
     public static int saildown;
     public static int wheelleft;
     public static int wheelright;
     public static int sailleft;
     public static int sailright;
+    public static int firecannon;
+    public static int connectiontimout;
     
     public static void createDefault(){
         try {

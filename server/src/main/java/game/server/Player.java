@@ -30,7 +30,6 @@ public class Player implements Runnable {
             Main.players_async.add(this);
             while (true) {
                 boat = (Boat) in.readObject();
-                // if (this.getid() == 0) System.out.println(boat.mast_down_percent);
             }
         } catch (IOException e) {
             // Connection lost - socket will be detected as closed in main loop

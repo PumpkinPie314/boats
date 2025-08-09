@@ -37,6 +37,8 @@ public class Main {
         
         // a little thread who just waits for client connections and puts them in the players list
         new Thread(()->listenForClients()).start();
+
+        // this players array is updated every frame synchronously
         List<Player> players = new ArrayList<>();
 
         gameState.tick_current = 0;

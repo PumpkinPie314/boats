@@ -2,15 +2,11 @@ package game.client;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
-import org.lwjgl.BufferUtils;
 
 import game.common.Boat;
 
@@ -23,6 +19,8 @@ public class Drawer {
          */
     static Mesh mastMesh;
     static Mesh sailMesh;
+    static Mesh cannonMesh;
+    static Mesh cannonBallMesh;
     static int section_count; // 6
     static int damages_levels = 3;
     public static void generateMeshes() {
@@ -31,7 +29,7 @@ public class Drawer {
             System.err.println("tried to generate meshes before loading a texture");
             System.exit(1);
         }
-        {// hull of boat
+        { // hull of boat
             float[][][] sections_positions = {
                 { { 0.0f, 0.0f, 0.6f }, { -0.25f, 0.0f, 0.2f }, { 0.0f, 0.0f, 0.2f } }, // u
                 { { 0.0f, 0.0f, 0.6f }, { 0.0f, 0.0f, 0.2f }, { 0.25f, 0.0f, 0.2f } },  // v
@@ -70,12 +68,17 @@ public class Drawer {
         float px = (float) 1 / Opengl.atlasWidth;
         { // mast
             float[] mast_quad = {
-                -0.05f, 0.0f, 0f, (4.0f/4)*bw + 8*px , 2*bh,
+                -0.05f, 0.0f, 0f, (4.0f/4)*bw + 8*px , 2*bh, 
                  0.05f, 0.0f, 0f, (5.0f/4)*bw - 8*px , 2*bh,
                 -0.05f, 1.0f, 0f, (4.0f/4)*bw + 8*px , bh,
                  0.05f, 1.0f, 0f, (5.0f/4)*bw - 8*px , bh,
+                
+                -0.5f, 1f,-0.025f, (5.0f/4)*bw + 8*px , 2*bh,
+                -0.5f ,1f ,0.025f, (6.0f/4)*bw - 8*px , 2*bh,
+                0.5f, 1f,-0.025f, (5.0f/4)*bw + 8*px , bh,
+                0.5f, 1f, 0.025f, (6.0f/4)*bw - 8*px , bh,
             };
-            mastMesh = new Mesh(mast_quad, new int[]{0, 1, 3, 0, 2, 3});
+            mastMesh = new Mesh(mast_quad, new int[]{0, 1, 3, 0, 2, 3,   4, 5, 7, 4, 6, 7});
         }
         { // sail
             int segments = 10;
@@ -92,7 +95,24 @@ public class Drawer {
             }
             int[] strip_ebo = IntStream.range(0, (segments+1)*2).toArray();
             sailMesh = new Mesh(vertex_data, strip_ebo);
-
+        }
+        { // cannon
+            float[] cannon_quad = {
+                -0.5f, 0.01f,-0.5f, (3.0f/4)*bw , (4f/2)*bh, 
+                 0.5f, 0.01f,-0.5f, (4.0f/4)*bw , (4f/2)*bh,
+                -0.5f, 0.01f, 1.5f, (3.0f/4)*bw , (3f/2)*bh,
+                 0.5f, 0.01f, 1.5f, (4.0f/4)*bw , (3f/2)*bh,
+            };
+            cannonMesh = new Mesh(cannon_quad, new int[] {0, 1, 3, 0, 2, 3});
+        }
+        { // cannonball
+            float[] cannonball_quad = {
+                -0.5f, -0.5f, 0f, (0.0f/2)*bw , (3f/2)*bh, 
+                 0.5f, -0.5f, 0f, (1.0f/2)*bw , (3f/2)*bh,
+                -0.5f, 0.5f, 0f,  (0.0f/2)*bw , (2f/2)*bh,
+                 0.5f, 0.5f, 0f,  (1.0f/2)*bw , (2f/2)*bh,
+            };
+            cannonBallMesh = new Mesh(cannonball_quad, new int[] {0, 1, 3, 0, 2, 3});
         }
         
 
@@ -105,6 +125,7 @@ public class Drawer {
         Matrix4f hullMatrix = new Matrix4f().translationRotate(boat.position, boat.rotation);
         // hull
         IntStream.range(0, section_count)
+            .filter(n->boat.sectionHealth[n]>0)
             .map(n->n + (boat.sectionHealth[n]-1)*section_count)
             .forEach(n-> Drawer.hullMeshes.get(n).draw(hullMatrix));
         // mast
@@ -122,6 +143,18 @@ public class Drawer {
             .scale(new Vector3f(1, -boat.mast_down_percent/2, boat.mast_down_percent*(saildir.dot(winddir)+1)/2/2))
             .translate(0, 1, 0) //move to the top of the mast
         );
+        // cannon
+        cannonMesh.draw(new Matrix4f()
+            .translate(boat.position)
+            .rotate(boat.cannonRotation)
+            .scale(new Vector3f(1f/4))
+        );
         
+    }
+    public static void drawCannonBall(CannonBall cb) {
+        cannonBallMesh.draw(new Matrix4f()
+            .translate(cb.position)
+            .scale(1f/4)
+        );
     }
 }
