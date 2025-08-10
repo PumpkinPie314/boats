@@ -1,5 +1,5 @@
-serverip = localhost
-serverport = 52025
+serverip = pumpkin.playit.gg
+serverport = 44230
 saildown = GLFW_KEY_W
 sailup = GLFW_KEY_S
 wheelleft = GLFW_KEY_A

@@ -21,6 +21,7 @@ public class Drawer {
     static Mesh sailMesh;
     static Mesh cannonMesh;
     static Mesh cannonBallMesh;
+    static Mesh cannonBallShadowMesh;
     static int section_count; // 6
     static int damages_levels = 3;
     public static void generateMeshes() {
@@ -87,6 +88,7 @@ public class Drawer {
             int pointer = 0;
             for (int i = 0; i < segments+1; i++) {
                 float t = (float) i /segments; // t ranges from 0 to 1
+                //                                  x   y                           z                       s           t
                 float[]  left_vert = new float[] {-0.4f, (float)Math.cos(t*tau/2), (float)Math.sin(t*tau/2), (1f/2)*bw, ((t+2f)/2)*bh};
                 float[] right_vert = new float[] { 0.4f, (float)Math.cos(t*tau/2), (float)Math.sin(t*tau/2), (2f/2)*bw, ((t+2f)/2)*bh};
                 System.arraycopy(left_vert, 0, vertex_data, pointer, 5);
@@ -109,10 +111,19 @@ public class Drawer {
             float[] cannonball_quad = {
                 -0.5f, -0.5f, 0f, (0.0f/2)*bw , (3f/2)*bh, 
                  0.5f, -0.5f, 0f, (1.0f/2)*bw , (3f/2)*bh,
-                -0.5f, 0.5f, 0f,  (0.0f/2)*bw , (2f/2)*bh,
-                 0.5f, 0.5f, 0f,  (1.0f/2)*bw , (2f/2)*bh,
+                -0.5f,  0.5f, 0f, (0.0f/2)*bw , (2f/2)*bh,
+                 0.5f,  0.5f, 0f, (1.0f/2)*bw , (2f/2)*bh,
             };
             cannonBallMesh = new Mesh(cannonball_quad, new int[] {0, 1, 3, 0, 2, 3});
+        }
+        { // cannonball shadow
+            float[] cannonball_shadow_quad = {
+                -0.5f, 0f, -0.5f, (0.0f/2)*bw , (4f/2)*bh, 
+                 0.5f, 0f, -0.5f, (1.0f/2)*bw , (4f/2)*bh,
+                -0.5f, 0f,  0.5f, (0.0f/2)*bw , (3f/2)*bh,
+                 0.5f, 0f,  0.5f, (1.0f/2)*bw , (3f/2)*bh,
+            };
+            cannonBallShadowMesh = new Mesh(cannonball_shadow_quad, new int[] {0, 1, 3, 0, 2, 3});
         }
         
 
@@ -134,13 +145,12 @@ public class Drawer {
             .rotateY(boat.sail_turn_percent * Main.gameState.config.sail_angle_limit * -1);
         mastMesh.draw(mastMatrix);
         // sail
-        
-        Vector3f saildir = new Vector3f(0,0,1).rotate(new Quaternionf(boat.rotation).rotateY(boat.sail_turn_percent * Main.gameState.config.sail_angle_limit * -1));
+        Vector3f saildir = new Vector3f(0,0,1).rotate(boat.rotation.rotateY(boat.sail_turn_percent * Main.gameState.config.sail_angle_limit * -1));
         Vector3f winddir = new Vector3f(Main.gameState.wind);
 
         sailMesh.drawStrip(new Matrix4f(mastMatrix)
             .translate(0, 1f, 0)//move mesh origin to the top of the circle
-            .scale(new Vector3f(1, -boat.mast_down_percent/2, boat.mast_down_percent*(saildir.dot(winddir)+1)/2/2))
+            .scale(new Vector3f(1, -boat.mast_down_percent/2, boat.mast_down_percent*(saildir.dot(winddir)+1)/2/2)) // one 2 to normalize, the other 2 cuts in half
             .translate(0, 1, 0) //move to the top of the mast
         );
         // cannon
@@ -152,9 +162,18 @@ public class Drawer {
         
     }
     public static void drawCannonBall(CannonBall cb) {
+        // ball
         cannonBallMesh.draw(new Matrix4f()
             .translate(cb.position)
-            .scale(1f/4)
+            .mul(new Matrix4f(Opengl.viewMatrix) // copy camera
+                .m30(0).m31(0).m32(0) // remove translation
+                .invert()
+            ).scale(1f/4)
+        );
+        // shadow
+        cannonBallShadowMesh.draw(new Matrix4f()
+            .translate(new Vector3f(cb.position.x, 0, cb.position.z))
+            .scale(1f/4 + (1f/4) * cb.position.y)
         );
     }
 }

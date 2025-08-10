@@ -84,6 +84,11 @@ public class Main {
         
             // game logic
             gameState.wind = new Vector3f(0,0,1);
+            /*
+             * most of the game logic is done by the clients. this is bad because clients can send whatever they want and cheat.
+             * I just don't want to have to write every line of code twice: once for client prediction and again for server validation.
+             * perhaps in the future, if cheaters are an issue, I can copy some client code over here to validate packets.
+             */
             
 
 

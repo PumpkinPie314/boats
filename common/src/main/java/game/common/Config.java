@@ -4,7 +4,8 @@ import java.io.Serializable;
 
 public class Config implements Serializable{
     public float fps = 60;
-    public float sail_speed = 0;
+    public float sail_speed_no_wind = 0;
+    public float sail_speed_with_wind = 0;
     public float turn_speed = 0;
     public float wheel_turn_speed = 0;
     public float mast_drop_speed = 0;
@@ -17,5 +18,4 @@ public class Config implements Serializable{
     public float cannon_fire_cooldown = 0;
     public float cannon_speed = 0;
     public float gravity = 0;
-    
 }

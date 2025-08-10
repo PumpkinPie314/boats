@@ -1,10 +1,9 @@
 package game.client;
 
 import org.joml.Vector3f;
-import game.common.Boat;
 
 public class CannonBall{
-    public Boat owner;
+    public int owner_boat_id = -1;
     int tick_fired;
     Vector3f position = new Vector3f();
     Vector3f velocity = new Vector3f();

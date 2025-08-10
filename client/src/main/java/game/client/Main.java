@@ -91,6 +91,7 @@ public class Main {
         myboat.sectionHealth = new int[] {3,3,3,1,2,3};
         int myboat_index = -1; //the index of this client's boat in the gamestate.boats arraylist
         Config last_config = new Config();
+        long cannonballs_created_up_to_tick = 0;
         while (!glfwWindowShouldClose(Window.id)) {
             long start_time = System.nanoTime();
             Opengl.updateMatrixUniforms();
@@ -125,45 +126,6 @@ public class Main {
             }
             float dt = 1f/config.fps;
 
-            // create connonballs
-            int ticks_covered = cannonBalls.isEmpty() ? 0 :cannonBalls.peekFirst().tick_fired;
-            for (Boat boat : gameState.boats){
-                if (boat.lastFired.tick_fired > ticks_covered){
-                    CannonBall cb = new CannonBall();
-                    cb.owner = boat;
-                    cb.tick_fired = boat.lastFired.tick_fired;
-                    cb.position = new Vector3f(boat.lastFired.position);
-                    cb.velocity = new Vector3f(boat.lastFired.velocity);
-
-                    // fast forward
-                    int missed_tick_count = gameState.tick_current - boat.lastFired.tick_fired;
-                    for (int _i = 0; _i < missed_tick_count  ; _i++) {
-                        cb.position
-                            .add(new Vector3f(cb.velocity).mul(dt))
-                            .add(new Vector3f(0,-1,0).mul(config.gravity * dt));
-                    }
-                    cannonBalls.addFirst(cb);
-                        /*
-                         * this is backwards to how you would normally use a queue: adding the the front and removing from the back.
-                         * it is this way because removed cannonballs are more likely to be older. 
-                         * this way the array only shifts cannonballs older then it, which is usualy a lot less
-                         */
-                };
-            }
-            
-            // update cannonballs        
-            Iterator<CannonBall> iterator = cannonBalls.iterator();
-            while (iterator.hasNext()) {
-                CannonBall cb = iterator.next();
-                cb.position
-                    .add(new Vector3f(cb.velocity).mul(dt))
-                    .add(new Vector3f(0,-1,0).mul(config.gravity * dt));
-
-                if (cb.position.y < -1) {
-                    iterator.remove();
-                }
-            }
-
             // collect inputs
             glfwPollEvents();
 
@@ -185,6 +147,22 @@ public class Main {
                 mouse_screen_space = new Vector3f(mx, 0, my);
 
             }
+            // aiming
+            float tau = (float) Math.TAU;
+            float yaw = (-mouse_screen_space.x-1f)*(1f/2)*tau; // -1,1 -> 0,-tau
+            float pitch = (mouse_screen_space.z-3)*(1f/16)*tau; // -1,1 -> (1/8)tau,(1/4)tau   aka 45°,90°
+            { // cannon angle
+                float cannon_angle = yaw+tau/2; // forwards
+                if (cannon_angle > 0          && cannon_angle <  (1f/4)*tau - config.cannon_angle_limit) cannon_angle =  (1f/4)*tau - config.cannon_angle_limit; // front left
+                if (cannon_angle < 0          && cannon_angle > -(1f/4)*tau + config.cannon_angle_limit) cannon_angle = -(1f/4)*tau + config.cannon_angle_limit; // front right
+                if (cannon_angle < (1f/2)*tau && cannon_angle >  (1f/4)*tau + config.cannon_angle_limit) cannon_angle =  (1f/4)*tau + config.cannon_angle_limit; // back left
+                if (cannon_angle >-(1f/2)*tau && cannon_angle < -(1f/4)*tau - config.cannon_angle_limit) cannon_angle = -(1f/4)*tau - config.cannon_angle_limit; // back right
+                
+                float cannon_height = (mouse_screen_space.z-1)*(1f/8)*tau ; // (1/8)tau,(1/4)tau -> 0,(1/8)tau
+                myboat.cannonRotation = new Quaternionf(myboat.rotation)
+                    .rotateAxis(cannon_angle, new Vector3f(0,1,0))
+                    .rotateAxis(cannon_height, new Vector3f(1,0,0));
+            }
 
             // update boat
             if (myboat.mast_down_percent > 1f) myboat.mast_down_percent = 1f;
@@ -205,38 +183,97 @@ public class Main {
                 if (Math.abs(myboat.sail_turn_percent) < 5 * config.sail_turn_speed * dt) myboat.sail_turn_percent = 0;
             }
             // boat movement
-            Vector3f forward = new Vector3f(0,0,1).rotate(myboat.rotation);
-            myboat.velocity = new Vector3f(forward).mul(myboat.mast_down_percent * config.sail_speed);
-            myboat.rotation.integrate(dt, 0, myboat.wheel_turn_percent * config.turn_speed * -1,0);
+            {
+                Vector3f saildir = new Vector3f(0,0,1).rotate(myboat.rotation.rotateY(myboat.sail_turn_percent * Main.gameState.config.sail_angle_limit * -1));
+                Vector3f winddir = new Vector3f(Main.gameState.wind);
+                Vector3f forward = new Vector3f(0,0,1).rotate(myboat.rotation);
+                float sail_efficiency_percent = (saildir.dot(winddir)+1)/2; // you can find this in drawer.drawBoat sail!
+                float max = config.sail_speed_with_wind;
+                float min = config.sail_speed_no_wind;
+                float speed = min + (max-min) * sail_efficiency_percent;
 
-            myboat.position.add(myboat.velocity.mul(dt));
+                myboat.velocity = new Vector3f(forward).mul(myboat.mast_down_percent*speed);
+                myboat.rotation.integrate(dt, 0, myboat.wheel_turn_percent * config.turn_speed * -1,0);
 
-            // aiming
-            float tau = (float) Math.TAU;
-            float yaw = (-mouse_screen_space.x-1f)*(1f/2)*tau; // -1,1 -> -tau,0
-            float pitch = (mouse_screen_space.z-3)*(1f/16)*tau; // -1,1 -> (1/8)tau,(1/4)tau   aka 45°,90°
-            { // cannon angle
-                float cannon_angle = yaw+tau/2; // forwards
-                if (cannon_angle > 0          && cannon_angle <  (1f/4)*tau - config.cannon_angle_limit) cannon_angle =  (1f/4)*tau - config.cannon_angle_limit; // front left
-                if (cannon_angle < 0          && cannon_angle > -(1f/4)*tau + config.cannon_angle_limit) cannon_angle = -(1f/4)*tau + config.cannon_angle_limit; // front right
-                if (cannon_angle < (1f/2)*tau && cannon_angle >  (1f/4)*tau + config.cannon_angle_limit) cannon_angle =  (1f/4)*tau + config.cannon_angle_limit; // back left
-                if (cannon_angle >-(1f/2)*tau && cannon_angle < -(1f/4)*tau - config.cannon_angle_limit) cannon_angle = -(1f/4)*tau - config.cannon_angle_limit; // back right
-                
-                float cannon_height = (mouse_screen_space.z-1)*(1f/8)*tau ; // (1/8)tau,(1/4)tau -> 0,(1/8)tau
-                myboat.cannonRotation = new Quaternionf(myboat.rotation)
-                    .rotateAxis(cannon_angle, new Vector3f(0,1,0))
-                    .rotateAxis(cannon_height, new Vector3f(1,0,0));
+                myboat.position.add(new Vector3f(myboat.velocity).mul(dt));
             }
             // shooting 
             if (
                 GLFW_PRESS == glfwGetKey(Window.id, GLFW_KEY_SPACE)
-                //  && gameState.tick_current - myboat.lastFired.tick_fired > config.cannon_fire_cooldown * 1/dt
+                 && gameState.tick_current - myboat.lastFired.tick_fired > (1/dt) * config.cannon_fire_cooldown
             ) {
                 myboat.lastFired.tick_fired = gameState.tick_current;
                 myboat.lastFired.position = new Vector3f(myboat.position);
-                myboat.lastFired.velocity = new Vector3f(0,0,1).rotate(new Quaternionf(myboat.cannonRotation)).mul(config.cannon_speed);
+                myboat.lastFired.velocity = new Vector3f(0,0,1)
+                    .rotate(new Quaternionf(myboat.cannonRotation))
+                    .mul(config.cannon_speed)
+                    .add(new Vector3f(myboat.velocity));
+                
             }
-            // System.out.println(myboat.lastFired.position);
+
+            // create connonballs
+            if (!cannonBalls.isEmpty()) cannonballs_created_up_to_tick = cannonBalls.peekFirst().tick_fired;
+            for (int boatid = 0; boatid < gameState.boats.size(); boatid++) {
+                Boat boat = gameState.boats.get(boatid);
+                if (boat.lastFired.tick_fired > cannonballs_created_up_to_tick){
+                    CannonBall cb = new CannonBall();
+                    cb.owner_boat_id = boatid;
+                    cb.tick_fired = boat.lastFired.tick_fired;
+                    cb.position = new Vector3f(boat.lastFired.position);
+                    cb.velocity = new Vector3f(boat.lastFired.velocity);
+                    System.out.println("cannonball made!");
+                    // fast forward
+                    int missed_tick_count = gameState.tick_current - boat.lastFired.tick_fired;
+                    for (int _i = 0; _i < missed_tick_count  ; _i++) {
+                        cb.velocity.add(new Vector3f(0,-1,0).mul(config.gravity * dt));
+                        cb.position.add(new Vector3f(cb.velocity).mul(dt));
+                    }
+                    cannonBalls.addFirst(cb);
+                        /*
+                         * this is backwards to how you would normally use a queue: adding to the front and removing from the back.
+                         * it is this way because removed cannonballs are more likely to be older. 
+                         * this way the array only shifts cannonballs older then it, which is usually a lot less
+                         */
+                };
+            }
+
+            // update cannonballs        
+            float hurt_radius = 1f/3;
+            Iterator<CannonBall> iterator = cannonBalls.iterator();
+            while (iterator.hasNext()) {
+                CannonBall cb = iterator.next();
+                cb.velocity.add(new Vector3f(0,-1,0).mul(config.gravity * dt));
+                cb.position.add(new Vector3f(cb.velocity).mul(dt));
+
+                if (cb.position.y < -0.1) {
+                    iterator.remove();
+                    continue;
+                }
+
+                // register hit
+                if (cb.owner_boat_id==myboat_index) continue;
+                System.out.println(cb.owner_boat_id);
+                System.out.println(gameState.boats.get(myboat_index));
+                System.out.println(myboat);
+                float[][] segment_hurt_sphere_centers = {
+                    // portside        // starboard
+                    {-1f/4, 0,  1f/2}, { 1f/4, 0,  1f/2}, //uv  // bow
+                    {-1f/4, 0,  0f/2}, { 1f/4, 0,  0f/2}, //wx
+                    {-1f/4, 0, -1f/2}, { 1f/4, 0, -1f/2}, //yz  // stern
+                };
+                for (int i = 0; i < segment_hurt_sphere_centers.length; i++) {
+                    if (myboat.sectionHealth[i] < 1) continue; 
+                    Vector3f hurtSphere = new Vector3f(segment_hurt_sphere_centers[i])
+                        .rotate(myboat.rotation)
+                        .add(myboat.position);
+                    if (hurtSphere.distance(cb.position) < hurt_radius){
+                        myboat.sectionHealth[i] -= 1; 
+                        iterator.remove();
+                        break;
+                    }
+                }
+            }
+
 
             // position camera
             Opengl.viewMatrix.identity()
@@ -250,13 +287,14 @@ public class Main {
             out.writeObject(myboat);
             out.flush();
             
+            long render_start_time = System.nanoTime();
             // draw
             glClearColor(0.0f, 0.5f,0.5f,1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             // draw boats
-            // Drawer.drawBoat(myboat);
+            Drawer.drawBoat(myboat);
             for (int i = 0; i < gameState.boats.size(); i++) {
-                // if (i == myboat_index) continue;// the client can draw her own boat
+                if (i == myboat_index) continue;// the client can draw her own boat
                 Drawer.drawBoat(gameState.boats.get(i));
             }
             // draw cannonballs
@@ -284,12 +322,15 @@ public class Main {
                 IntStream.range(12, 18).forEach(i -> Drawer.hullMeshes.get(i).draw(new Matrix4f().translate(-5, 0, -5.0f)));
             }
             glfwSwapBuffers(Window.id);
-
-
+            
+            
+            long render_time = System.nanoTime() - render_start_time;
             long delta_ns = System.nanoTime() - start_time;
             double delta_ms = delta_ns / 1_000_000.0;
             double frametime = delta_ms / 1_000.0;
-            glfwSetWindowTitle(Window.id, WINDOW_NAME + "   " + "frametime: " + (int)delta_ms);
+            String performanceInfo = String.format("frame time: %.1fms | render time: %.1fms", 
+            delta_ms, render_time/1_000_000.0);
+            glfwSetWindowTitle(Window.id, WINDOW_NAME + " | " + performanceInfo);
         }
         cleanup();
     }
