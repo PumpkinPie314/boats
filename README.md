@@ -13,6 +13,7 @@ if it is not installed, install it with:
 ```powershell
 winget install --id Git.Git -e --source winget
 ```
+you may need to close and reopen your terminal after installing in order to use git commands.
 ### clone the repository
 ```powershell
 git clone https://github.com/PumpkinPie314/boats.git

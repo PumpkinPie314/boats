@@ -152,7 +152,7 @@ public class Drawer {
             .rotateY(boat.sail_turn_percent * Main.gameState.config.sail_angle_limit * -1);
         mastMesh.draw(mastMatrix);
         // sail
-        Vector3f saildir = new Vector3f(0,0,1).rotate(boat.rotation.rotateY(boat.sail_turn_percent * Main.gameState.config.sail_angle_limit * -1));
+        Vector3f saildir = new Vector3f(0,0,1).rotate(new Quaternionf(boat.rotation).rotateY(boat.sail_turn_percent * Main.gameState.config.sail_angle_limit * -1));
         Vector3f winddir = new Vector3f(Main.gameState.wind);
 
         sailMesh.drawStrip(new Matrix4f(mastMatrix)

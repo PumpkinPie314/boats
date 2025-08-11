@@ -190,8 +190,8 @@ public class Main {
                 }
             }
             { // boat movement
-                Vector3f saildir = new Vector3f(0,0,1).rotate(myboat.rotation.rotateY(myboat.sail_turn_percent * Main.gameState.config.sail_angle_limit * -1));
-                Vector3f winddir = new Vector3f(Main.gameState.wind);
+                Vector3f saildir = new Vector3f(0,0,1).rotate(new Quaternionf(myboat.rotation)).rotateY(myboat.sail_turn_percent * Main.gameState.config.sail_angle_limit * -1);
+                Vector3f winddir = new Vector3f(gameState.wind);
                 Vector3f forward = new Vector3f(0,0,1).rotate(myboat.rotation);
                 float sail_efficiency_percent = (saildir.dot(winddir)+1)/2; // you can find this in drawer.drawBoat sail!
                 float max = config.sail_speed_with_wind;
