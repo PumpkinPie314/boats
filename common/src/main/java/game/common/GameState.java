@@ -10,4 +10,6 @@ public class GameState implements Serializable {
     public Config config = new Config();
     public ArrayList<Boat> boats = new ArrayList<>();
     public Vector3f wind = new Vector3f();
+    public ArrayList<FireEvent> fireEvents = new ArrayList<>();
+    public ArrayList<DamageEvent> damageEvents = new ArrayList<>();
 }

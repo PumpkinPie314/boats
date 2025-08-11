@@ -18,4 +18,5 @@ public class Config implements Serializable{
     public float cannon_fire_cooldown = 0;
     public float cannon_speed = 0;
     public float gravity = 0;
+    public float wake_length = 0;
 }

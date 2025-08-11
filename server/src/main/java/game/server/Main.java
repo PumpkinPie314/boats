@@ -55,6 +55,8 @@ public class Main {
                     if (i+1 > players.size()) System.out.println("player numbers shifted");
                     players.remove(i);
                     gameState.boats.remove(i);
+                    gameState.fireEvents.remove(i);
+                    gameState.damageEvents.remove(i);
                     synchronized (players_async) {
                         players_async.remove(i);
                     }
@@ -67,6 +69,8 @@ public class Main {
                     int playerId = gameState.boats.size(); // This will be the correct next available ID
                     System.out.println("A new client has connected! Welcome player " + playerId);
                     gameState.boats.add(players.get(playerId).boat);
+                    gameState.fireEvents.add(null);
+                    gameState.damageEvents.add(null);
                 }
                 Thread.sleep(1000);//wait for player socket to connect
             }
@@ -75,7 +79,10 @@ public class Main {
             }
             // read incomming boat data from clients
             for (int i = 0; i < players.size(); i++) {
-                gameState.boats.set(i, players.get(i).boat);
+                Player p = players.get(i);
+                gameState.boats.set(i, p.boat);
+                gameState.fireEvents.set(i, p.lastFired);
+                gameState.damageEvents.set(i, p.lastHit);
                 // System.out.println("player " + i + "'s position has ben set to: "+ gameState.boats.get(i).position);
             }
 
