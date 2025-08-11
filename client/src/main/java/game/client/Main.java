@@ -226,25 +226,19 @@ public class Main {
                 for (int i = 0; i < gameState.fireEvents.size(); i++) {
                     FireEvent fireEvent = gameState.fireEvents.get(i);
                     if (fireEvent == null) continue; 
-                    if (fireEvent.tick_fired > cannonballs_created_up_to_tick){
-                        CannonBall cb = new CannonBall();
-                        cb.owner_boat_id = i;
-                        cb.tick_fired = fireEvent.tick_fired;
-                        cb.position = new Vector3f(fireEvent.position);
-                        cb.velocity = new Vector3f(fireEvent.velocity);
-                        // fast forward
-                        int missed_tick_count = gameState.tick_current - fireEvent.tick_fired;
-                        for (int _i = 0; _i < missed_tick_count  ; _i++) {
-                            cb.velocity.add(new Vector3f(0,-1,0).mul(config.gravity * dt));
-                            cb.position.add(new Vector3f(cb.velocity).mul(dt));
-                        }
-                        cannonBalls.addFirst(cb);
-                            /*
-                            * this is backwards to how you would normally use a queue: adding to the front and removing from the back.
-                            * it is this way because removed cannonballs are more likely to be older. 
-                            * this way the array only shifts cannonballs older then it, which is usually a lot less
-                            */
-                    };
+                    if (fireEvent.tick_fired <= cannonballs_created_up_to_tick) continue; // already created this one
+                    CannonBall cb = new CannonBall();
+                    cb.owner_boat_id = i; // the event arraylists and the boats arraylist are parrellel
+                    cb.tick_fired = fireEvent.tick_fired;
+                    cb.position = new Vector3f(fireEvent.position);
+                    cb.velocity = new Vector3f(fireEvent.velocity);
+                    // fast forward
+                    int missed_tick_count = gameState.tick_current - fireEvent.tick_fired;
+                    for (int _i = 0; _i < missed_tick_count  ; _i++) {
+                        cb.velocity.add(new Vector3f(0,-1,0).mul(config.gravity * dt));
+                        cb.position.add(new Vector3f(cb.velocity).mul(dt));
+                    }
+                    cannonBalls.addFirst(cb);
                 }
             }
             { // update cannonballs
@@ -256,14 +250,6 @@ public class Main {
                 * this way you dont have to aim for where your opponent is on the server, which could be ahead of where you see them.
                 * this is called favor the shooter
                 */
-                float[][] segment_hurt_sphere_centers = {
-                    // portside                // starboard
-                    // x,y,z,radius            // x,y,z,radius 
-                    {-1f/4, 0,  1f/2, 1f/3, }, { 1f/4, 0,  1f/2, 1f/3}, //uv  // bow
-                    {-1f/4, 0,  0f/2, 1f/3}, { 1f/4, 0,  0f/2, 1f/3}, //wx
-                    {-1f/4, 0, -1f/2, 1f/3}, { 1f/4, 0, -1f/2, 1f/3}, //yz  // stern
-                };
-                float hurt_radius = 1f/3;
                 Iterator<CannonBall> ballIter = cannonBalls.iterator();
                 while (ballIter.hasNext()) {
                     CannonBall cb = ballIter.next();
@@ -280,13 +266,9 @@ public class Main {
                     for (int boat_index = 0; boat_index < gameState.boats.size(); boat_index++) {
                         if (boat_index == myboat_index) continue; // no self damage
                         Boat boat = gameState.boats.get(boat_index);
-                        for (int i = 0; i < segment_hurt_sphere_centers.length; i++) {
+                        for (int i = 0; i < Drawer.section_count; i++) {
                             if (boat.sectionHealth[i] < 1) continue; 
-                            Vector3f hurtSphere = new Vector3f(segment_hurt_sphere_centers[i])
-                                .rotate(boat.rotation)
-                                .add(boat.position);
-                            Vector3f trandformed_cannonball_position = new Vector3f(cb.position).div(1,30,1);
-                            if (hurtSphere.distance(trandformed_cannonball_position) < hurt_radius){
+                            if (Drawer.isInsideHurtSphere(cb.position, boat, i)){
                                 if (gameState.boats.get(boat_index).sectionHealth[i] < 1) continue; // already dead
                                 myLastHit = new DamageEvent();
                                 myLastHit.tick_hit = gameState.tick_current;
@@ -300,33 +282,36 @@ public class Main {
                 }
             }
             { // taking damage
-                float hurt_radius = 1f/3;
-                float[][] segment_hurt_sphere_centers = {
-                    // portside                // starboard
-                    // x,y,z,radius            // x,y,z,radius 
-                    {-1f/4, 0,  1f/2, 1f/3}, { 1f/4, 0,  1f/2, 1f/3}, //uv  // bow
-                    {-1f/4, 0,  0f/2, 1f/3}, { 1f/4, 0,  0f/2, 1f/3}, //wx
-                    {-1f/4, 0, -1f/2, 1f/3}, { 1f/4, 0, -1f/2, 1f/3}, //yz  // stern
-                };
+
+                /*
+                 * because each client is in charge of their own boat,
+                 * the way damage is done is the client recieves a damage event and applied damage to themselves.
+                 * this is reflected to the other clients after myboat is sent to the server and that is copied into gamestate
+                 */
                 for (DamageEvent hit : gameState.damageEvents) {
                     if (hit == null) continue;
-                    if (hit.boatid != myboat_index) continue;
+                    if (hit.boatid != myboat_index) continue; // ignore events of other boats taking damage
                     if (hit.tick_hit > damage_dealt_up_to_tick) {
                         damage_dealt_up_to_tick = hit.tick_hit;
-                        if (myboat.sectionHealth[hit.sectionid] < 1) continue; // already dead
+                        if (myboat.sectionHealth[hit.sectionid] < 1) continue;
                         myboat.sectionHealth[hit.sectionid] -= 1;
                     }
                     // remove the ball that just hit me
-                    Vector3f hurtSphere = new Vector3f(segment_hurt_sphere_centers[hit.sectionid])
-                        .rotate(myboat.rotation)
-                        .add(myboat.position);
-                    cannonBalls.removeIf(cb-> hurtSphere.distance(new Vector3f(cb.position).div(1,30,1)) < hurt_radius);
+                    cannonBalls.removeIf(cb-> Drawer.isInsideHurtSphere(cb.position, myboat, hit.sectionid));
                 }
             }
             { // death and respawning
-                if (Arrays.equals(myboat.sectionHealth,new int[] {0,0,0,0,0,0})) myboat = new Boat();
+                if (Arrays.equals(myboat.sectionHealth, new int[] {0,0,0,0,0,0})) {
+                    myboat.position = new Vector3f();
+                    myboat.velocity = new Vector3f();
+                    myboat.rotation = new Quaternionf();
+                    myboat.cannonRotation = new Quaternionf();
+                    myboat.sectionHealth = new int[] {3,3,3,3,3,3};
+                    myboat.mast_down_percent = 0f;
+                    myboat.wheel_turn_percent = 0f;
+                    myboat.sail_turn_percent = 0f;
+                }
             }
-
             { // send new updates to server
                 out.reset();
                 out.writeObject(myLastFired);
@@ -338,15 +323,16 @@ public class Main {
             long render_start_time = System.nanoTime();
             glClearColor(0.0f, 0.5f,0.5f,1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            // define units. both bls and blt are 128 pixels. but one is for s (left and right texture) and the other for t (up and down)
             int boat_pixel_length = 128;
-            float bw = (float) boat_pixel_length / Opengl.atlasWidth;
-            float bh = (float) boat_pixel_length / Opengl.atlasHeight;
+            float bls = (float) boat_pixel_length / Opengl.atlasWidth;
+            float blt = (float) boat_pixel_length / Opengl.atlasHeight;
             { // draw temp quad
                 float[] vertex_data = {
                     // x y z, r g b, s t
-                    50, -0.2f, 50, bw, bh,
-                    0  , -0.2f, 50, 0, bh,
-                    50, -0.2f, 0, bw, 0,
+                    50, -0.2f, 50, bls, blt,
+                    0  , -0.2f, 50, 0, blt,
+                    50, -0.2f, 0, bls, 0,
                     0  , -0.2f, 0, 0, 0,
                 };
                 int[] indices = {
@@ -380,9 +366,9 @@ public class Main {
                         Vector3f rightVel = new Vector3f(wake_drift, -0.01f, 0 ).rotate(boat.rotation);
                         Vector3f leftPos = new Vector3f(-1f/4, 0, 1f/2 ).rotate(boat.rotation).add(boat.position);
                         Vector3f rightPos = new Vector3f(1f/4, 0, 1f/2 ).rotate(boat.rotation).add(boat.position);
-                        float[] left_vert = new float[] {leftPos.x, leftPos.y, leftPos.z, (4f/2) * bw, bh,
+                        float[] left_vert = new float[] {leftPos.x, leftPos.y, leftPos.z, (4f/2) * bls, blt,
                             leftVel.x, leftVel.y, leftVel.z};
-                        float[] right_vert = new float[] {rightPos.x, rightPos.y, rightPos.z, (5f/2) * bw, bh,
+                        float[] right_vert = new float[] {rightPos.x, rightPos.y, rightPos.z, (5f/2) * bls, blt,
                             rightVel.x, rightVel.y, rightVel.z};
                         wake.addFirst(left_vert);
                         wake.addFirst(right_vert);
@@ -395,7 +381,7 @@ public class Main {
                         // fade
                         vert[4] += dt/config.wake_length;
                     });
-                    wake.removeIf(vert -> vert[4] > 2*bh);
+                    wake.removeIf(vert -> vert[4] > 2*blt);
 
                     float[] vertex_data = new float[wake.size() * 8];
                     int pointer = 0;
@@ -423,10 +409,10 @@ public class Main {
             }
             { // draw wheel ui thingy
                 float[] quad = {
-                    -1f/4, 2, 0, (7f/4)*bw , (2f/2)*bh, 
-                     1f/4, 2, 0, (6f/4)*bw , (2f/2)*bh,
-                    -1f/4, 0, 0, (7f/4)*bw , (4f/2)*bh,
-                     1f/4, 0, 0, (6f/4)*bw , (4f/2)*bh,
+                    -1f/4, 2, 0, (7f/4)*bls , (2f/2)*blt, 
+                     1f/4, 2, 0, (6f/4)*bls , (2f/2)*blt,
+                    -1f/4, 0, 0, (7f/4)*bls , (4f/2)*blt,
+                     1f/4, 0, 0, (6f/4)*bls , (4f/2)*blt,
                 };
                 int[] indices = {0, 1, 3, 0, 2, 3};
                 Mesh wheelMeshUI = new Mesh(quad, indices);

@@ -28,8 +28,8 @@ public class Drawer {
     static int damages_levels = 3;
     public static void generateMeshes() {
         int boat_pixel_length = 128;
-        float bw = (float) boat_pixel_length / Opengl.atlasWidth;
-        float bh = (float) boat_pixel_length / Opengl.atlasHeight;
+        float bls = (float) boat_pixel_length / Opengl.atlasWidth;
+        float blt = (float) boat_pixel_length / Opengl.atlasHeight;
         float px = (float) 1 / Opengl.atlasWidth;
         if (Opengl.textureId == -1) {
             System.err.println("tried to generate meshes before loading a texture");
@@ -71,15 +71,15 @@ public class Drawer {
         }
         { // mast
             float[] mast_quad = {
-                -0.05f, 0.0f, 0f, (4.0f/4)*bw + 8*px , 2*bh, 
-                 0.05f, 0.0f, 0f, (5.0f/4)*bw - 8*px , 2*bh,
-                -0.05f, 1.0f, 0f, (4.0f/4)*bw + 8*px , bh,
-                 0.05f, 1.0f, 0f, (5.0f/4)*bw - 8*px , bh,
+                -0.05f, 0.0f, 0f, (4.0f/4)*bls + 8*px , 2*blt, 
+                 0.05f, 0.0f, 0f, (5.0f/4)*bls - 8*px , 2*blt,
+                -0.05f, 1.0f, 0f, (4.0f/4)*bls + 8*px , blt,
+                 0.05f, 1.0f, 0f, (5.0f/4)*bls - 8*px , blt,
                 
-                -0.5f, 1f,-0.025f, (5.0f/4)*bw + 8*px , 2*bh,
-                -0.5f ,1f ,0.025f, (6.0f/4)*bw - 8*px , 2*bh,
-                0.5f, 1f,-0.025f, (5.0f/4)*bw + 8*px , bh,
-                0.5f, 1f, 0.025f, (6.0f/4)*bw - 8*px , bh,
+                -0.5f, 1f,-0.025f, (5.0f/4)*bls + 8*px , 2*blt,
+                -0.5f ,1f ,0.025f, (6.0f/4)*bls - 8*px , 2*blt,
+                0.5f, 1f,-0.025f, (5.0f/4)*bls + 8*px , blt,
+                0.5f, 1f, 0.025f, (6.0f/4)*bls - 8*px , blt,
             };
             mastMesh = new Mesh(mast_quad, new int[]{0, 1, 3, 0, 2, 3,   4, 5, 7, 4, 6, 7});
         }
@@ -91,8 +91,8 @@ public class Drawer {
             for (int i = 0; i < segments+1; i++) {
                 float t = (float) i /segments; // t ranges from 0 to 1
                 //                                  x   y                           z                       s           t
-                float[]  left_vert = new float[] {-0.4f, (float)Math.cos(t*tau/2), (float)Math.sin(t*tau/2), (1f/2)*bw, ((t+2f)/2)*bh};
-                float[] right_vert = new float[] { 0.4f, (float)Math.cos(t*tau/2), (float)Math.sin(t*tau/2), (2f/2)*bw, ((t+2f)/2)*bh};
+                float[]  left_vert = new float[] {-0.4f, (float)Math.cos(t*tau/2), (float)Math.sin(t*tau/2), (1f/2)*bls, ((t+2f)/2)*blt};
+                float[] right_vert = new float[] { 0.4f, (float)Math.cos(t*tau/2), (float)Math.sin(t*tau/2), (2f/2)*bls, ((t+2f)/2)*blt};
                 System.arraycopy(left_vert, 0, vertex_data, pointer, 5);
                 System.arraycopy(right_vert, 0, vertex_data, pointer+5, 5);
                 pointer += 10;
@@ -102,39 +102,50 @@ public class Drawer {
         }
         { // cannon
             float[] cannon_quad = {
-                -0.5f, 0.01f,-0.5f, (3.0f/4)*bw , (4f/2)*bh, 
-                 0.5f, 0.01f,-0.5f, (4.0f/4)*bw , (4f/2)*bh,
-                -0.5f, 0.01f, 1.5f, (3.0f/4)*bw , (3f/2)*bh,
-                 0.5f, 0.01f, 1.5f, (4.0f/4)*bw , (3f/2)*bh,
+                -0.5f, 0.01f,-0.5f, (3.0f/4)*bls , (4f/2)*blt, 
+                 0.5f, 0.01f,-0.5f, (4.0f/4)*bls , (4f/2)*blt,
+                -0.5f, 0.01f, 1.5f, (3.0f/4)*bls , (3f/2)*blt,
+                 0.5f, 0.01f, 1.5f, (4.0f/4)*bls , (3f/2)*blt,
             };
             cannonMesh = new Mesh(cannon_quad, new int[] {0, 1, 3, 0, 2, 3});
         }
         { // cannonball
             float[] cannonball_quad = {
-                -0.5f, -0.5f, 0f, (0.0f/2)*bw , (3f/2)*bh, 
-                 0.5f, -0.5f, 0f, (1.0f/2)*bw , (3f/2)*bh,
-                -0.5f,  0.5f, 0f, (0.0f/2)*bw , (2f/2)*bh,
-                 0.5f,  0.5f, 0f, (1.0f/2)*bw , (2f/2)*bh,
+                -0.5f, -0.5f, 0f, (0.0f/2)*bls , (3f/2)*blt, 
+                 0.5f, -0.5f, 0f, (1.0f/2)*bls , (3f/2)*blt,
+                -0.5f,  0.5f, 0f, (0.0f/2)*bls , (2f/2)*blt,
+                 0.5f,  0.5f, 0f, (1.0f/2)*bls , (2f/2)*blt,
             };
             cannonBallMesh = new Mesh(cannonball_quad, new int[] {0, 1, 3, 0, 2, 3});
         }
         { // cannonball shadow
             float[] cannonball_shadow_quad = {
-                -0.5f, 0f, -0.5f, (0.0f/2)*bw , (4f/2)*bh, 
-                 0.5f, 0f, -0.5f, (1.0f/2)*bw , (4f/2)*bh,
-                -0.5f, 0f,  0.5f, (0.0f/2)*bw , (3f/2)*bh,
-                 0.5f, 0f,  0.5f, (1.0f/2)*bw , (3f/2)*bh,
+                -0.5f, 0f, -0.5f, (0.0f/2)*bls , (4f/2)*blt, 
+                 0.5f, 0f, -0.5f, (1.0f/2)*bls , (4f/2)*blt,
+                -0.5f, 0f,  0.5f, (0.0f/2)*bls , (3f/2)*blt,
+                 0.5f, 0f,  0.5f, (1.0f/2)*bls , (3f/2)*blt,
             };
             cannonBallShadowMesh = new Mesh(cannonball_shadow_quad, new int[] {0, 1, 3, 0, 2, 3});
         }
     }
-    public static float[][] boat_segment_hurt_sphere_centers = {
-        // portside                // starboard
-        // x,y,z,radius            // x,y,z,radius 
-        {-1f/4, 0,  1f/2, 1f/3}, { 1f/4, 0,  1f/2, 1f/3}, //uv  // bow
-        {-1f/4, 0,  0f/2, 1f/3}, { 1f/4, 0,  0f/2, 1f/3}, //wx
-        {-1f/4, 0, -1f/2, 1f/3}, { 1f/4, 0, -1f/2, 1f/3}, //yz  // stern
-    };
+    public static boolean isInsideHurtSphere(Vector3f point, Boat boat, int segment){
+        float[][] spheres = {
+            // portside                // starboard
+            // x,y,z,radius            // x,y,z,radius 
+            {-1f/4, 0,  1f/2, 1f/3}, { 1f/4, 0,  1f/2, 1f/3}, //uv  // bow
+            {-1f/4, 0,  0f/2, 1f/3}, { 1f/4, 0,  0f/2, 1f/3}, //wx
+            {-1f/4, 0, -1f/2, 1f/3}, { 1f/4, 0, -1f/2, 1f/3}, //yz  // stern
+        };
+        float[] center = {spheres[segment][0], spheres[segment][1], spheres[segment][2]};
+        float radius = spheres[segment][3];
+        Vector3f hurtSphereCenter = new Vector3f(center)
+            .rotate(boat.rotation)
+            .add(boat.position);
+        Vector3f projectedPoint = new Vector3f(point).mul(1,0,1);
+             // the point(cannonball) is projected onto the sea floor before distance check. this means shooting above the boat still registers a hit
+        return hurtSphereCenter.distance(projectedPoint) < radius;
+
+    }
     public static void drawBoat(Boat boat) {
         if (hullMeshes.size() == 0) {
             System.err.println("tried draw a boat without generating meshes");
