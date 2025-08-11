@@ -155,20 +155,21 @@ public class Main {
                     my = -((my/Window.height)-0.5f)*2;
                     mouse_screen_space = new Vector3f(mx, 0, my);
                 }
-                // aiming
+                // aiming cannon angle
+                System.out.println("mouse_screen_space: " + mouse_screen_space);
                 float tau = (float) Math.TAU;
-                { // cannon angle
-                    float cannon_angle = -(1f/2)*mouse_screen_space.x; // forwards
-                    if (cannon_angle > 0          && cannon_angle <  (1f/4)*tau - config.cannon_angle_limit) cannon_angle =  (1f/4)*tau - config.cannon_angle_limit; // front left
-                    if (cannon_angle < 0          && cannon_angle > -(1f/4)*tau + config.cannon_angle_limit) cannon_angle = -(1f/4)*tau + config.cannon_angle_limit; // front right
-                    if (cannon_angle < (1f/2)*tau && cannon_angle >  (1f/4)*tau + config.cannon_angle_limit) cannon_angle =  (1f/4)*tau + config.cannon_angle_limit; // back left
-                    if (cannon_angle >-(1f/2)*tau && cannon_angle < -(1f/4)*tau - config.cannon_angle_limit) cannon_angle = -(1f/4)*tau - config.cannon_angle_limit; // back right
-                    
-                    float cannon_height = (mouse_screen_space.z-1)*(1f/8)*tau ; // (1/8)tau,(1/4)tau -> 0,(1/8)tau
-                    myboat.cannonRotation = new Quaternionf(myboat.rotation)
-                        .rotateAxis(cannon_angle, new Vector3f(0,1,0))
-                        .rotateAxis(cannon_height, new Vector3f(1,0,0));
-                }
+                float yaw = (-mouse_screen_space.x-1f)*(1f/2)*tau; // -1,1 -> 0,-tau
+                float pitch = (mouse_screen_space.z-3)*(1f/16)*tau; // -1,1 -> (1/8)tau,(1/4)tau   aka 45°,90°
+                float cannon_angle = mouse_screen_space.x*(-1f/2)*tau; // forwards
+                if (cannon_angle > 0          && cannon_angle <  (1f/4)*tau - config.cannon_angle_limit) cannon_angle =  (1f/4)*tau - config.cannon_angle_limit; // front left
+                if (cannon_angle < 0          && cannon_angle > -(1f/4)*tau + config.cannon_angle_limit) cannon_angle = -(1f/4)*tau + config.cannon_angle_limit; // front right
+                if (cannon_angle < (1f/2)*tau && cannon_angle >  (1f/4)*tau + config.cannon_angle_limit) cannon_angle =  (1f/4)*tau + config.cannon_angle_limit; // back left
+                if (cannon_angle >-(1f/2)*tau && cannon_angle < -(1f/4)*tau - config.cannon_angle_limit) cannon_angle = -(1f/4)*tau - config.cannon_angle_limit; // back right
+                
+                float cannon_height = (mouse_screen_space.z-1)*(1f/8)*tau ; // -1,1 -> 0,(1/8)tau
+                myboat.cannonRotation = new Quaternionf(myboat.rotation)
+                    .rotateAxis(cannon_angle, new Vector3f(0,1,0))
+                    .rotateAxis(cannon_height, new Vector3f(1,0,0));
             }
             { // update boat
                 if (myboat.mast_down_percent > 1f) myboat.mast_down_percent = 1f;
