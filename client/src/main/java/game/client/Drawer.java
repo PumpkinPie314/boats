@@ -1,5 +1,7 @@
 package game.client;
 
+import static org.lwjgl.opengl.GL11.glDepthMask;
+
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.stream.IntStream;
@@ -26,6 +28,9 @@ public class Drawer {
     static int damages_levels = 3;
     public static void generateMeshes() {
         int boat_pixel_length = 128;
+        float bw = (float) boat_pixel_length / Opengl.atlasWidth;
+        float bh = (float) boat_pixel_length / Opengl.atlasHeight;
+        float px = (float) 1 / Opengl.atlasWidth;
         if (Opengl.textureId == -1) {
             System.err.println("tried to generate meshes before loading a texture");
             System.exit(1);
@@ -64,9 +69,6 @@ public class Drawer {
                 }
             }
         }
-        float bw = (float) boat_pixel_length / Opengl.atlasWidth;
-        float bh = (float) boat_pixel_length / Opengl.atlasHeight;
-        float px = (float) 1 / Opengl.atlasWidth;
         { // mast
             float[] mast_quad = {
                 -0.05f, 0.0f, 0f, (4.0f/4)*bw + 8*px , 2*bh, 
@@ -125,9 +127,14 @@ public class Drawer {
             };
             cannonBallShadowMesh = new Mesh(cannonball_shadow_quad, new int[] {0, 1, 3, 0, 2, 3});
         }
-        
-
     }
+    public static float[][] boat_segment_hurt_sphere_centers = {
+        // portside                // starboard
+        // x,y,z,radius            // x,y,z,radius 
+        {-1f/4, 0,  1f/2, 1f/3}, { 1f/4, 0,  1f/2, 1f/3}, //uv  // bow
+        {-1f/4, 0,  0f/2, 1f/3}, { 1f/4, 0,  0f/2, 1f/3}, //wx
+        {-1f/4, 0, -1f/2, 1f/3}, { 1f/4, 0, -1f/2, 1f/3}, //yz  // stern
+    };
     public static void drawBoat(Boat boat) {
         if (hullMeshes.size() == 0) {
             System.err.println("tried draw a boat without generating meshes");
@@ -154,11 +161,13 @@ public class Drawer {
             .translate(0, 1, 0) //move to the top of the mast
         );
         // cannon
+        glDepthMask(false);
         cannonMesh.draw(new Matrix4f()
             .translate(boat.position)
             .rotate(boat.cannonRotation)
             .scale(new Vector3f(1f/4))
         );
+        glDepthMask(true);
         
     }
     public static void drawCannonBall(CannonBall cb) {
@@ -171,9 +180,11 @@ public class Drawer {
             ).scale(1f/4)
         );
         // shadow
+        glDepthMask(false);
         cannonBallShadowMesh.draw(new Matrix4f()
             .translate(new Vector3f(cb.position.x, 0, cb.position.z))
             .scale(1f/4 + (1f/4) * cb.position.y)
         );
+        glDepthMask(true);
     }
 }

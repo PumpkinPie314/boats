@@ -15,6 +15,4 @@ public class Boat implements Serializable {
     public float mast_down_percent = 0f;
     public float wheel_turn_percent = 0f;
     public float sail_turn_percent = 0f;
-
-    public FireEvent lastFired = new FireEvent();
 }

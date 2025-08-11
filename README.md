@@ -1,12 +1,17 @@
 # boats
 ## installation
 
-install java 21 and git if you haven't already:
+install java 21
 ```powershell
 winget install --id=Oracle.JDK.21 -e
 ```
+check if git is installed
 ```powershell
-winget install --id=GitHub.cli -e
+git --version
+```
+if it is not installed, install it with:
+```powershell
+winget install --id Git.Git -e --source winget
 ```
 ### clone the repository
 ```powershell

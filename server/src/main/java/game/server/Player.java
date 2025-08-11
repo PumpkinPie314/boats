@@ -6,6 +6,8 @@ import java.io.ObjectInputStream;
 import java.net.Socket;
 
 import game.common.Boat;
+import game.common.DamageEvent;
+import game.common.FireEvent;
 
 public class Player implements Runnable {
     public Socket socket;
@@ -15,6 +17,8 @@ public class Player implements Runnable {
     public Boat boat = new Boat();
     // this boat is written exclusively from the player that owns it. 
     // the main thread reads all the player's boats at once and copies them into gamestate
+    public FireEvent lastFired = null;
+    public DamageEvent lastHit = null;
 
     public Player(Socket socket) {
         this.socket = socket;
@@ -29,6 +33,8 @@ public class Player implements Runnable {
             out = new ObjectOutputStream(socket.getOutputStream());
             Main.players_async.add(this);
             while (true) {
+                lastFired = (FireEvent) in.readObject();
+                lastHit = (DamageEvent) in.readObject();
                 boat = (Boat) in.readObject();
             }
         } catch (IOException e) {
