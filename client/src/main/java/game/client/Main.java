@@ -124,7 +124,8 @@ public class Main {
                 }
             }
             float dt = 1f/config.fps;
-
+            // update health
+            myboat.sectionHealth = gameState.boats.get(myboat_index).sectionHealth;
             // collect inputs
             glfwPollEvents();
 
@@ -144,7 +145,6 @@ public class Main {
                 mx = ((mx/Window.width)-0.5f)*2;
                 my = -((my/Window.height)-0.5f)*2;
                 mouse_screen_space = new Vector3f(mx, 0, my);
-
             }
             // aiming
             float tau = (float) Math.TAU;

@@ -60,7 +60,7 @@ to run a server locally, make sure your terminal is in the `boats` folder and ru
 to change the server setting, they are in `server/config.txt`. when this file is changed, the server will automatically reload the settings. and send them to the clients.
 
 
-# a quick git
+# a quick git guide
 to pull the latest changes from the repository:
 ```powershell
 git pull
@@ -73,6 +73,7 @@ git pull
 git stash pop
 ```
 this will save your changes, pull the latest changes from the repository, and then apply your changes
+
 if you dont want to save your changes, you can just run:
 ```powershell
 git reset --hard

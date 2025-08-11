@@ -110,7 +110,9 @@ public class Mesh {
 
     public static void cleanupAll() {
         for (Mesh mesh : meshes) {
-            mesh.cleanup();
+            glDeleteBuffers(mesh.vbo);
+            glDeleteBuffers(mesh.ebo);
+            glDeleteVertexArrays(mesh.vao);
         }
         meshes.clear();
     }
