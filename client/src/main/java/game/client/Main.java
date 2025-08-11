@@ -88,7 +88,6 @@ public class Main {
 
         System.out.println("game started!");
         Boat myboat = new Boat();
-        myboat.sectionHealth = new int[] {3,3,3,1,2,3};
         int myboat_index = -1; //the index of this client's boat in the gamestate.boats arraylist
         Config last_config = new Config();
         long cannonballs_created_up_to_tick = 0;
@@ -239,37 +238,38 @@ public class Main {
 
             // update cannonballs        
             float hurt_radius = 1f/3;
-            Iterator<CannonBall> iterator = cannonBalls.iterator();
-            while (iterator.hasNext()) {
-                CannonBall cb = iterator.next();
+            Iterator<CannonBall> ballIter = cannonBalls.iterator();
+            while (ballIter.hasNext()) {
+                CannonBall cb = ballIter.next();
                 cb.velocity.add(new Vector3f(0,-1,0).mul(config.gravity * dt));
                 cb.position.add(new Vector3f(cb.velocity).mul(dt));
 
                 if (cb.position.y < -0.1) {
-                    iterator.remove();
+                    ballIter.remove();
                     continue;
                 }
 
                 // register hit
-                if (cb.owner_boat_id==myboat_index) continue;
-                System.out.println(cb.owner_boat_id);
-                System.out.println(gameState.boats.get(myboat_index));
-                System.out.println(myboat);
-                float[][] segment_hurt_sphere_centers = {
-                    // portside        // starboard
-                    {-1f/4, 0,  1f/2}, { 1f/4, 0,  1f/2}, //uv  // bow
-                    {-1f/4, 0,  0f/2}, { 1f/4, 0,  0f/2}, //wx
-                    {-1f/4, 0, -1f/2}, { 1f/4, 0, -1f/2}, //yz  // stern
-                };
-                for (int i = 0; i < segment_hurt_sphere_centers.length; i++) {
-                    if (myboat.sectionHealth[i] < 1) continue; 
-                    Vector3f hurtSphere = new Vector3f(segment_hurt_sphere_centers[i])
-                        .rotate(myboat.rotation)
-                        .add(myboat.position);
-                    if (hurtSphere.distance(cb.position) < hurt_radius){
-                        myboat.sectionHealth[i] -= 1; 
-                        iterator.remove();
-                        break;
+                if (cb.owner_boat_id!=myboat_index) continue; // this client is in charge of it's own ball's dealing damage.
+                for (int boat_index = 0; boat_index < gameState.boats.size(); boat_index++) {
+                    if (boat_index == myboat_index) continue; // cannot hurt yourself
+                    Boat boat = gameState.boats.get(boat_index);
+                    float[][] segment_hurt_sphere_centers = {
+                        // portside        // starboard
+                        {-1f/4, 0,  1f/2}, { 1f/4, 0,  1f/2}, //uv  // bow
+                        {-1f/4, 0,  0f/2}, { 1f/4, 0,  0f/2}, //wx
+                        {-1f/4, 0, -1f/2}, { 1f/4, 0, -1f/2}, //yz  // stern
+                    };
+                    for (int i = 0; i < segment_hurt_sphere_centers.length; i++) {
+                        if (boat.sectionHealth[i] < 1) continue; 
+                        Vector3f hurtSphere = new Vector3f(segment_hurt_sphere_centers[i])
+                            .rotate(boat.rotation)
+                            .add(boat.position);
+                        if (hurtSphere.distance(cb.position) < hurt_radius){
+                            boat.sectionHealth[i] -= 1; 
+                            ballIter.remove();
+                            break;
+                        }
                     }
                 }
             }
@@ -333,10 +333,10 @@ public class Main {
             glfwSetWindowTitle(Window.id, WINDOW_NAME + " | " + performanceInfo);
         }
         cleanup();
+        Opengl.cleanup();
     }
     public static void cleanup() throws IOException{
         Mesh.cleanupAll();
-        Opengl.cleanup();
         Window.cleanUp();
     }
 }

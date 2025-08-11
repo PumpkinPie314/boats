@@ -11,7 +11,7 @@ public class Boat implements Serializable {
     public Quaternionf rotation = new Quaternionf();
     public Quaternionf cannonRotation = new Quaternionf();
     
-    public int[] sectionHealth = new int[6];
+    public int[] sectionHealth = new int[] {3,3,3,3,3,3};
     public float mast_down_percent = 0f;
     public float wheel_turn_percent = 0f;
     public float sail_turn_percent = 0f;

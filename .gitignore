@@ -3,3 +3,6 @@
 
 # Ignore Gradle build output directory
 build
+
+# Ignore client configuration files so they can everyone can run git pull without needing to stash their unique client configs
+client/client-config.txt
