@@ -28,7 +28,6 @@ import static org.lwjgl.opengl.GL45.glCreateTextures;
 import static org.lwjgl.opengl.GL45.glTextureParameteri;
 import static org.lwjgl.opengl.GL45.glTextureStorage2D;
 import static org.lwjgl.opengl.GL45.glTextureSubImage2D;
-import static org.lwjgl.stb.STBImage.stbi_failure_reason;
 import static org.lwjgl.stb.STBImage.stbi_image_free;
 import static org.lwjgl.stb.STBImage.stbi_load_from_memory;
 import static org.lwjgl.opengl.GL11.GL_BLEND;
@@ -68,8 +67,8 @@ public class Opengl {
     
     static int atlasWidth;
     static int atlasHeight;
+    static ByteBuffer texturePixelData; // CPU copy for pixel reading
 
-    @SuppressWarnings("unused")
     private Opengl(){}//this class will never be instantiated.
 
     public static void init(){
@@ -157,6 +156,13 @@ public class Opengl {
         int[] num_channels = new int[1];
         // decode
         ByteBuffer decodedImage = stbi_load_from_memory(rawImage, width, height, num_channels, 4);
+        
+        // Keep a CPU copy for pixel reading
+        texturePixelData = BufferUtils.createByteBuffer(decodedImage.remaining());
+        texturePixelData.put(decodedImage);
+        texturePixelData.flip();
+        decodedImage.rewind(); // Reset position for GPU upload
+        
         glTextureStorage2D(id, 1,  GL_RGBA8 , width[0], height[0]); // alocates gpu memory
         glTextureSubImage2D(id, 0, 0, 0, width[0], height[0], 
                             GL_RGBA, GL_UNSIGNED_BYTE, decodedImage); // upload decoded image to gpu
@@ -174,10 +180,32 @@ public class Opengl {
             System.err.println("Failed to load raw image data from: " + path);
             return;
         }
-        if (decodedImage == null) {
-            System.err.println("STB failed to decode image: " + stbi_failure_reason());
-            return;
+    }
+    public static float[] readPixelColor(float s, float t){
+        // Check if texture data is available
+        if (texturePixelData == null) {
+            System.err.println("No texture data available for pixel reading");
+            return new float[]{1.0f, 0.0f, 1.0f, 1.0f}; // Return magenta with full alpha
         }
+        
+        // Clamp s and t to [0, 1] range
+        s = Math.max(0.0f, Math.min(1.0f, s));
+        t = Math.max(0.0f, Math.min(1.0f, t));
+        
+        // Convert texture coordinates to pixel coordinates
+        int x = (int)(s * (atlasWidth - 1));
+        int y = (int)(t * (atlasHeight - 1));
+        
+        // Calculate byte offset in the buffer (4 bytes per pixel: RGBA)
+        int pixelIndex = (y * atlasWidth + x) * 4;
+        
+        // Extract RGBA values (convert unsigned bytes to floats 0.0-1.0)
+        float r = (texturePixelData.get(pixelIndex) & 0xFF) / 255.0f;
+        float g = (texturePixelData.get(pixelIndex + 1) & 0xFF) / 255.0f;
+        float b = (texturePixelData.get(pixelIndex + 2) & 0xFF) / 255.0f;
+        float a = (texturePixelData.get(pixelIndex + 3) & 0xFF) / 255.0f;
+        
+        return new float[]{r, g, b, a};
     }
 
     public static void cleanup() {

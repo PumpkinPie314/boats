@@ -275,6 +275,11 @@ public class Main {
                                 myLastHit.boatid = boat_index;
                                 myLastHit.sectionid = i;
                                 ballIter.remove();
+                                // update kill count
+                                boolean last_hit_event = Arrays.stream((gameState.boats.get(boat_index).sectionHealth)).sum() == 1;
+                                if (last_hit_event) {
+                                    myboat.kill_count ++;
+                                }
                                 break;
                             }
                         }
@@ -310,6 +315,8 @@ public class Main {
                     myboat.mast_down_percent = 0f;
                     myboat.wheel_turn_percent = 0f;
                     myboat.sail_turn_percent = 0f;
+
+                    myboat.death_count++;
                 }
             }
             { // send new updates to server
@@ -327,48 +334,30 @@ public class Main {
             int boat_pixel_length = 128;
             float bls = (float) boat_pixel_length / Opengl.atlasWidth;
             float blt = (float) boat_pixel_length / Opengl.atlasHeight;
-            { // draw temp quad
-                float[] vertex_data = {
-                    // x y z, r g b, s t
-                    50, -0.2f, 50, bls, blt,
-                    0  , -0.2f, 50, 0, blt,
-                    50, -0.2f, 0, bls, 0,
-                    0  , -0.2f, 0, 0, 0,
-                };
-                int[] indices = {
-                    0, 1, 3, 
-                    0, 2, 3,
-                };
-                
-                Mesh quad = new Mesh(vertex_data, indices);
-                glDepthMask(false);
-                quad.draw(new Matrix4f());
-                glDepthMask(true);
-                quad.cleanup();
-            }
-            { // draw temp boat meshes
-                IntStream.range(0, 6).forEach(i -> Drawer.hullMeshes.get(i).draw(new Matrix4f().translate(5, 0, -5.0f)));
-                IntStream.range(6, 12).forEach(i -> Drawer.hullMeshes.get(i).draw(new Matrix4f().translate(0, 0, -5.0f)));
-                IntStream.range(12, 18).forEach(i -> Drawer.hullMeshes.get(i).draw(new Matrix4f().translate(-5, 0, -5.0f)));
-            }
             
             { // draw wake          
-                float wake_drift = 0.2f;
                 while (wakes.size() < gameState.boats.size()) {
                     wakes.add(new ArrayDeque<>());
                 }
                 for (int i = 0; i < gameState.boats.size(); i++) {
                     Boat boat = gameState.boats.get(i);
                     Deque<float[]> wake = wakes.get(i);
+                    boolean is_evil = boat.kill_count == gameState.boats.stream().mapToInt(b->b.kill_count).max().orElse(-1) 
+                                    && boat.kill_count != 0;
+                    Vector3f wake_drift = is_evil ? new Vector3f(2f, -0.1f, 0 ): new Vector3f(0.2f, -0.001f, 0 );
 
+                    float wake_texture_width = (1f/2)*bls;
+                    float wake_texture_s_offset = is_evil ? (5f/2) * bls : (4f/2) * bls;
                     if (wake.peekFirst() == null || new Vector3f(wake.peekFirst()).distance(boat.position) > 1f/4) {
-                        Vector3f leftVel = new Vector3f(-wake_drift, -0.01f, 0 ).rotate(boat.rotation);
-                        Vector3f rightVel = new Vector3f(wake_drift, -0.01f, 0 ).rotate(boat.rotation);
+                        Vector3f leftVel = new Vector3f(wake_drift).mul(new Vector3f(-1,1,1)).rotate(boat.rotation);
+                        Vector3f rightVel = new Vector3f(wake_drift).mul(new Vector3f(1,1,1)).rotate(boat.rotation);
                         Vector3f leftPos = new Vector3f(-1f/4, 0, 1f/2 ).rotate(boat.rotation).add(boat.position);
                         Vector3f rightPos = new Vector3f(1f/4, 0, 1f/2 ).rotate(boat.rotation).add(boat.position);
-                        float[] left_vert = new float[] {leftPos.x, leftPos.y, leftPos.z, (4f/2) * bls, blt,
+                        float[] left_vert = new float[] {leftPos.x, leftPos.y, leftPos.z,
+                            wake_texture_s_offset, blt,
                             leftVel.x, leftVel.y, leftVel.z};
-                        float[] right_vert = new float[] {rightPos.x, rightPos.y, rightPos.z, (5f/2) * bls, blt,
+                        float[] right_vert = new float[] {rightPos.x, rightPos.y, rightPos.z,
+                            wake_texture_s_offset + wake_texture_width, blt,
                             rightVel.x, rightVel.y, rightVel.z};
                         wake.addFirst(left_vert);
                         wake.addFirst(right_vert);
@@ -379,7 +368,7 @@ public class Main {
                         vert[1] += vert[6] * dt;
                         vert[2] += vert[7] * dt;
                         // fade
-                        vert[4] += dt/config.wake_length;
+                        vert[4] += blt*dt/config.wake_length;
                     });
                     wake.removeIf(vert -> vert[4] > 2*blt);
 
@@ -397,6 +386,9 @@ public class Main {
                 }
             }
 
+            { // draw background
+                Drawer.drawLevel();
+            }
             { // draw boats
                 Drawer.drawBoat(myboat);
                 for (int i = 0; i < gameState.boats.size(); i++) {
@@ -424,6 +416,23 @@ public class Main {
                 );
                 wheelMeshUI.cleanup();
             }
+            { // draw wind arrow
+                float[] quad = {
+                    -1f/2, 0, -1f/2, (7f/4)*bls , (2f/2)*blt, 
+                     1f/2, 0, -1f/2, (6f/4)*bls , (2f/2)*blt,
+                    -1f/2, 0,  1f/2, (7f/4)*bls , (4f/2)*blt,
+                     1f/2, 0,  1f/2, (6f/4)*bls , (4f/2)*blt,
+                };
+                int[] indices = {0, 1, 3, 0, 2, 3};
+                Mesh wheelMeshUI = new Mesh(quad, indices);
+                wheelMeshUI.draw(new Matrix4f()
+                    .mul(new Matrix4f(Opengl.viewMatrix).invert())
+                    .mul(new Matrix4f(Opengl.projectionMatrix).invert())
+                    .translate(myboat.wheel_turn_percent, -1, 0)
+                    .scale(1/32f)
+                );
+                wheelMeshUI.cleanup(); 
+            }
 
             { // position camera
                 float tau = (float) Math.TAU;
@@ -436,15 +445,6 @@ public class Main {
                     .rotate(new Quaternionf(myboat.rotation).invert())
                     .translate(new Vector3f(myboat.position).negate());
             }
-
-
-
-
-
-
-
-
-
             glfwSwapBuffers(Window.id);
             
 
@@ -452,8 +452,8 @@ public class Main {
             long render_time = System.nanoTime() - render_start_time;
             long delta_ns = System.nanoTime() - start_time;
             double delta_ms = delta_ns / 1_000_000.0;
-            String performanceInfo = String.format("frame time: %.1fms | render time: %.1fms", 
-            delta_ms, render_time/1_000_000.0);
+            String performanceInfo = String.format("player: %d | kills: %d | deaths: %d| \t| frame time: %.1fms | render time: %.1fms", 
+            myboat_index, myboat.kill_count, myboat.death_count, delta_ms, render_time/1_000_000.0);
             glfwSetWindowTitle(Window.id, WINDOW_NAME + " | " + performanceInfo);
         }
         cleanup();

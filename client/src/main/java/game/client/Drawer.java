@@ -24,6 +24,7 @@ public class Drawer {
     static Mesh cannonMesh;
     static Mesh cannonBallMesh;
     static Mesh cannonBallShadowMesh;
+    static Mesh levelMesh;
     static int section_count; // 6
     static int damages_levels = 3;
     public static void generateMeshes() {
@@ -127,6 +128,20 @@ public class Drawer {
             };
             cannonBallShadowMesh = new Mesh(cannonball_shadow_quad, new int[] {0, 1, 3, 0, 2, 3});
         }
+        { // level background
+            float[] vertex_data = {
+                // x y z, s t
+                 25,  -0.001f,  25, 16*bls, 16*blt,
+                -25 , -0.001f,  25, 2*bls, 16*blt,
+                 25,  -0.001f, -25 , 16*bls, 2*blt,
+                -25 , -0.001f, -25 , 2*bls, 2*blt,
+            };
+            int[] indices = {
+                0, 1, 3, 
+                0, 2, 3,
+            };
+            levelMesh = new Mesh(vertex_data, indices);
+        }
     }
     public static boolean isInsideHurtSphere(Vector3f point, Boat boat, int segment){
         float[][] spheres = {
@@ -198,6 +213,12 @@ public class Drawer {
             .translate(new Vector3f(cb.position.x, 0, cb.position.z))
             .scale(1f/4 + (1f/4) * cb.position.y)
         );
+        glDepthMask(true);
+    }
+    
+    public static void drawLevel() {
+        glDepthMask(false);
+        levelMesh.draw(new Matrix4f());
         glDepthMask(true);
     }
 }

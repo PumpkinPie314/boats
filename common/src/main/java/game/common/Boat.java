@@ -17,4 +17,5 @@ public class Boat implements Serializable {
     public float sail_turn_percent = 0f;
 
     public int kill_count = 0;
+    public int death_count = 0;
 }
