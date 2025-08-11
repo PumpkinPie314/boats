@@ -35,6 +35,7 @@ import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.glClear;
 import static org.lwjgl.opengl.GL11.glClearColor;
+import static org.lwjgl.opengl.GL11.glDepthMask;
 
 @SuppressWarnings("BusyWait") // allows sleep() in a loop
 public class Main {
@@ -99,7 +100,7 @@ public class Main {
         long damage_dealt_up_to_tick = 0;
 
         List<Deque<float[]>> wakes = new ArrayList<>(new ArrayDeque<>());
-        Deque<float[]> floam = new ArrayDeque<>();
+        // Deque<float[]> floam = new ArrayDeque<>();
         while (!glfwWindowShouldClose(Window.id)) {
             long start_time = System.nanoTime();
             Opengl.updateMatrixUniforms();
@@ -337,13 +338,16 @@ public class Main {
             long render_start_time = System.nanoTime();
             glClearColor(0.0f, 0.5f,0.5f,1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            int boat_pixel_length = 128;
+            float bw = (float) boat_pixel_length / Opengl.atlasWidth;
+            float bh = (float) boat_pixel_length / Opengl.atlasHeight;
             { // draw temp quad
                 float[] vertex_data = {
                     // x y z, r g b, s t
-                    10, -0.001f, 8, 1, 1,
-                    0, -0.001f, 8, 0, 1,
-                    10, -0.001f, 0, 1, 0,
-                    0, -0.001f, 0, 0, 0,
+                    50, -0.2f, 50, bw, bh,
+                    0  , -0.2f, 50, 0, bh,
+                    50, -0.2f, 0, bw, 0,
+                    0  , -0.2f, 0, 0, 0,
                 };
                 int[] indices = {
                     0, 1, 3, 
@@ -351,7 +355,9 @@ public class Main {
                 };
                 
                 Mesh quad = new Mesh(vertex_data, indices);
+                glDepthMask(false);
                 quad.draw(new Matrix4f());
+                glDepthMask(true);
                 quad.cleanup();
             }
             { // draw temp boat meshes
@@ -360,9 +366,6 @@ public class Main {
                 IntStream.range(12, 18).forEach(i -> Drawer.hullMeshes.get(i).draw(new Matrix4f().translate(-5, 0, -5.0f)));
             }
             
-            int boat_pixel_length = 128;
-            float bw = (float) boat_pixel_length / Opengl.atlasWidth;
-            float bh = (float) boat_pixel_length / Opengl.atlasHeight;
             { // draw wake          
                 float wake_drift = 0.2f;
                 while (wakes.size() < gameState.boats.size()) {
@@ -406,9 +409,6 @@ public class Main {
                     wakeMesh.drawStrip(new Matrix4f().translate(new Vector3f(0,-0.01f,0)));
                     wakeMesh.cleanup();
                 }
-            }
-            { // draw foam
-                
             }
 
             { // draw boats

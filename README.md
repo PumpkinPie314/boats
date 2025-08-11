@@ -20,11 +20,6 @@ git clone https://github.com/PumpkinPie314/boats.git
 cd boats
 ```
 ### configure the client
-run 
-```powershell
-./gradlew client:run
-```
-it will create a `client-config.txt` file in the `client` folder.
 open `\client\client-config.txt` and change the server ip and port to match the server you want to join.
 example:
 ```
