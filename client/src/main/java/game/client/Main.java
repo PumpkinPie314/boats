@@ -8,6 +8,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
@@ -285,6 +286,7 @@ public class Main {
                                 .add(boat.position);
                             Vector3f trandformed_cannonball_position = new Vector3f(cb.position).div(1,30,1);
                             if (hurtSphere.distance(trandformed_cannonball_position) < hurt_radius){
+                                if (gameState.boats.get(boat_index).sectionHealth[i] < 1) continue; // already dead
                                 myLastHit = new DamageEvent();
                                 myLastHit.tick_hit = gameState.tick_current;
                                 myLastHit.boatid = boat_index;
@@ -319,8 +321,8 @@ public class Main {
                     cannonBalls.removeIf(cb-> hurtSphere.distance(new Vector3f(cb.position).div(1,30,1)) < hurt_radius);
                 }
             }
-            { // dath and respawning
-                if (myboat.sectionHealth.equals(new int[] {0,0,0,0,0,0})) myboat = new Boat();
+            { // death and respawning
+                if (Arrays.equals(myboat.sectionHealth,new int[] {0,0,0,0,0,0})) myboat = new Boat();
             }
 
             { // send new updates to server
