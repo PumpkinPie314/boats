@@ -156,10 +156,7 @@ public class Main {
                     mouse_screen_space = new Vector3f(mx, 0, my);
                 }
                 // aiming cannon angle
-                System.out.println("mouse_screen_space: " + mouse_screen_space);
                 float tau = (float) Math.TAU;
-                float yaw = (-mouse_screen_space.x-1f)*(1f/2)*tau; // -1,1 -> 0,-tau
-                float pitch = (mouse_screen_space.z-3)*(1f/16)*tau; // -1,1 -> (1/8)tau,(1/4)tau   aka 45°,90°
                 float cannon_angle = mouse_screen_space.x*(-1f/2)*tau; // forwards
                 if (cannon_angle > 0          && cannon_angle <  (1f/4)*tau - config.cannon_angle_limit) cannon_angle =  (1f/4)*tau - config.cannon_angle_limit; // front left
                 if (cannon_angle < 0          && cannon_angle > -(1f/4)*tau + config.cannon_angle_limit) cannon_angle = -(1f/4)*tau + config.cannon_angle_limit; // front right
@@ -260,7 +257,7 @@ public class Main {
                 float[][] segment_hurt_sphere_centers = {
                     // portside                // starboard
                     // x,y,z,radius            // x,y,z,radius 
-                    {-1f/4, 0,  1f/2, 1f/3}, { 1f/4, 0,  1f/2, 1f/3}, //uv  // bow
+                    {-1f/4, 0,  1f/2, 1f/3, }, { 1f/4, 0,  1f/2, 1f/3}, //uv  // bow
                     {-1f/4, 0,  0f/2, 1f/3}, { 1f/4, 0,  0f/2, 1f/3}, //wx
                     {-1f/4, 0, -1f/2, 1f/3}, { 1f/4, 0, -1f/2, 1f/3}, //yz  // stern
                 };

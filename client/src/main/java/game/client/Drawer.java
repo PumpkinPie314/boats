@@ -172,6 +172,7 @@ public class Drawer {
     }
     public static void drawCannonBall(CannonBall cb) {
         // ball
+        glDepthMask(false);
         cannonBallMesh.draw(new Matrix4f()
             .translate(cb.position)
             .mul(new Matrix4f(Opengl.viewMatrix) // copy camera
@@ -179,6 +180,7 @@ public class Drawer {
                 .invert()
             ).scale(1f/4)
         );
+        glDepthMask(true);
         // shadow
         glDepthMask(false);
         cannonBallShadowMesh.draw(new Matrix4f()
