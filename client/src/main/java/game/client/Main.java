@@ -312,6 +312,7 @@ public class Main {
                     if (hit.boatid != myboat_index) continue;
                     if (hit.tick_hit > damage_dealt_up_to_tick) {
                         damage_dealt_up_to_tick = hit.tick_hit;
+                        if (myboat.sectionHealth[hit.sectionid] < 1) continue; // already dead
                         myboat.sectionHealth[hit.sectionid] -= 1;
                     }
                     // remove the ball that just hit me
