@@ -283,7 +283,8 @@ public class Main {
                             Vector3f hurtSphere = new Vector3f(segment_hurt_sphere_centers[i])
                                 .rotate(boat.rotation)
                                 .add(boat.position);
-                            if (hurtSphere.distance(cb.position) < hurt_radius){
+                            Vector3f trandformed_cannonball_position = new Vector3f(cb.position).div(1,1f/2,1);
+                            if (hurtSphere.distance(trandformed_cannonball_position) < hurt_radius){
                                 myLastHit = new DamageEvent();
                                 myLastHit.tick_hit = gameState.tick_current;
                                 myLastHit.boatid = boat_index;
@@ -315,7 +316,7 @@ public class Main {
                     Vector3f hurtSphere = new Vector3f(segment_hurt_sphere_centers[hit.sectionid])
                         .rotate(myboat.rotation)
                         .add(myboat.position);
-                    cannonBalls.removeIf(cb-> hurtSphere.distance(cb.position) < hurt_radius);
+                    cannonBalls.removeIf(cb-> hurtSphere.distance(new Vector3f(cb.position).div(1,1f/2,1)) < hurt_radius);
                 }
             }
             { // dath and respawning
