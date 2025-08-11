@@ -349,7 +349,7 @@ public class Main {
                 };
                 
                 Mesh quad = new Mesh(vertex_data, indices);
-                quad.draw(new Matrix4f());
+                // quad.draw(new Matrix4f());
                 quad.cleanup();
             }
             { // draw temp boat meshes
