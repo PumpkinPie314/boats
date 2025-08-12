@@ -137,6 +137,7 @@ public class Main {
                 }
             }
             float dt = 1f/config.fps;
+            float tau = (float) Math.TAU;
             Vector3f mouse_screen_space = new Vector3f();
             { // collect inputs
                 glfwPollEvents();
@@ -158,7 +159,6 @@ public class Main {
                     mouse_screen_space = new Vector3f(mx, 0, my);
                 }
                 // aiming cannon angle
-                float tau = (float) Math.TAU;
                 float cannon_angle = mouse_screen_space.x*(-1f/2)*tau; // forwards
                 if (cannon_angle > 0          && cannon_angle <  (1f/4)*tau - config.cannon_angle_limit) cannon_angle =  (1f/4)*tau - config.cannon_angle_limit; // front left
                 if (cannon_angle < 0          && cannon_angle > -(1f/4)*tau + config.cannon_angle_limit) cannon_angle = -(1f/4)*tau + config.cannon_angle_limit; // front right
@@ -260,6 +260,10 @@ public class Main {
                         ballIter.remove();
                         continue;
                     }
+                    if (Drawer.isAboveBlack(cb.position)) {
+                        ballIter.remove();
+                        continue;
+                    }
 
                     // hit other boats
                     if (cb.owner_boat_id!=myboat_index) continue; // ignore balls not shot by me
@@ -304,6 +308,14 @@ public class Main {
                     // remove the ball that just hit me
                     cannonBalls.removeIf(cb-> Drawer.isInsideHurtSphere(cb.position, myboat, hit.sectionid));
                 }
+                // running into walls
+                for (int i = 0; i < Drawer.section_count; i++) {
+                    float[] section = Drawer.getSectionSphereData()[i];
+                    Vector3f sectionPos = new Vector3f(section)
+                        .rotate(myboat.rotation)
+                        .add(myboat.position);
+                    if (Drawer.isAboveBlack(sectionPos)) myboat.sectionHealth[i] = 0;
+                }
             }
             { // death and respawning
                 if (Arrays.equals(myboat.sectionHealth, new int[] {0,0,0,0,0,0})) {
@@ -342,8 +354,8 @@ public class Main {
                 for (int i = 0; i < gameState.boats.size(); i++) {
                     Boat boat = gameState.boats.get(i);
                     Deque<float[]> wake = wakes.get(i);
-                    boolean is_evil = boat.kill_count == gameState.boats.stream().mapToInt(b->b.kill_count).max().orElse(-1) 
-                                    && boat.kill_count != 0;
+                    boolean is_evil = boat.kill_count == gameState.boats.stream().mapToInt(b->b.kill_count).max().orElse(-1)
+                                    && boat.kill_count >= 5;
                     Vector3f wake_drift = is_evil ? new Vector3f(2f, -0.1f, 0 ): new Vector3f(0.2f, -0.001f, 0 );
 
                     float wake_texture_width = (1f/2)*bls;
@@ -418,24 +430,21 @@ public class Main {
             }
             { // draw wind arrow
                 float[] quad = {
-                    -1f/2, 0, -1f/2, (7f/4)*bls , (2f/2)*blt, 
-                     1f/2, 0, -1f/2, (6f/4)*bls , (2f/2)*blt,
-                    -1f/2, 0,  1f/2, (7f/4)*bls , (4f/2)*blt,
-                     1f/2, 0,  1f/2, (6f/4)*bls , (4f/2)*blt,
+                    -1f/4, 0, -1f/2, (3f/4)*bls , (3f/2)*blt, 
+                     1f/4, 0, -1f/2, (2f/4)*bls , (3f/2)*blt,
+                    -1f/4, 0,  1f/2, (3f/4)*bls , (4f/2)*blt,
+                     1f/4, 0,  1f/2, (2f/4)*bls , (4f/2)*blt,
                 };
                 int[] indices = {0, 1, 3, 0, 2, 3};
-                Mesh wheelMeshUI = new Mesh(quad, indices);
-                wheelMeshUI.draw(new Matrix4f()
+                Mesh arrowMesh = new Mesh(quad, indices);
+                arrowMesh.draw(new Matrix4f()
                     .mul(new Matrix4f(Opengl.viewMatrix).invert())
                     .mul(new Matrix4f(Opengl.projectionMatrix).invert())
-                    .translate(myboat.wheel_turn_percent, -1, 0)
-                    .scale(1/32f)
+                    .translate(myboat.wheel_turn_percent, -0.5f, 0)
                 );
-                wheelMeshUI.cleanup(); 
+                arrowMesh.cleanup(); 
             }
-
             { // position camera
-                float tau = (float) Math.TAU;
                 float yaw = (-mouse_screen_space.x-1f)*(1f/2)*tau; // -1,1 -> 0,-tau
                 float pitch = (mouse_screen_space.z-3)*(1f/16)*tau; // -1,1 -> (1/8)tau,(1/4)tau   aka 45°,90°
                 Opengl.viewMatrix.identity()

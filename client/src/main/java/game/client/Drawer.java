@@ -4,6 +4,7 @@ import static org.lwjgl.opengl.GL11.glDepthMask;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.stream.IntStream;
 
 import org.joml.Matrix4f;
@@ -143,16 +144,46 @@ public class Drawer {
             levelMesh = new Mesh(vertex_data, indices);
         }
     }
-    public static boolean isInsideHurtSphere(Vector3f point, Boat boat, int segment){
-        float[][] spheres = {
+    public static boolean isAboveBlack(Vector3f pos){
+        int boat_pixel_length = 128;
+        float bls = (float) boat_pixel_length / Opengl.atlasWidth;
+        float blt = (float) boat_pixel_length / Opengl.atlasHeight;
+        // -25,25 -> 2bl,16bl
+        Vector3f texturePos = new Vector3f(pos)
+            .add(new Vector3f(25,0,25)) // 0,50
+            .div(50) // 0,1
+            .mul(14) // 0,14
+            .add(new Vector3f(2,0,2)) // 2,16
+            .mul(new Vector3f(bls,0,blt)); // 2bl,16bl
+        float s = texturePos.x;
+        float t = texturePos.z;
+        float[] color_data = Opengl.readPixelColor(s,t);
+        float darkness_threshhold = 0.1f;
+
+        float red   = color_data[0];
+        float green = color_data[1];
+        float blue  = color_data[2];
+        float alpha = color_data[3];
+        return (
+            red   < darkness_threshhold &&
+            green < darkness_threshhold &&
+            blue  < darkness_threshhold &&
+            alpha > 0
+        );
+    }
+    public static float[][] getSectionSphereData(){
+        return new float[][] {
             // portside                // starboard
             // x,y,z,radius            // x,y,z,radius 
-            {-1f/4, 0,  1f/2, 1f/3}, { 1f/4, 0,  1f/2, 1f/3}, //uv  // bow
-            {-1f/4, 0,  0f/2, 1f/3}, { 1f/4, 0,  0f/2, 1f/3}, //wx
-            {-1f/4, 0, -1f/2, 1f/3}, { 1f/4, 0, -1f/2, 1f/3}, //yz  // stern
+            {-1f/8, 0,  1f/2, 1f/3}, { 1f/8, 0,  1f/2, 1f/3}, //uv  // bow
+            {-1f/8, 0,  0f/2, 1f/3}, { 1f/8, 0,  0f/2, 1f/3}, //wx
+            {-1f/8, 0, -1f/2, 1f/3}, { 1f/8, 0, -1f/2, 1f/3}, //yz  // stern
         };
-        float[] center = {spheres[segment][0], spheres[segment][1], spheres[segment][2]};
-        float radius = spheres[segment][3];
+    }
+    public static boolean isInsideHurtSphere(Vector3f point, Boat boat, int segment){
+        float[][] sphere_data = getSectionSphereData();
+        float[] center = {sphere_data[segment][0], sphere_data[segment][1], sphere_data[segment][2]};
+        float radius = sphere_data[segment][3];
         Vector3f hurtSphereCenter = new Vector3f(center)
             .rotate(boat.rotation)
             .add(boat.position);

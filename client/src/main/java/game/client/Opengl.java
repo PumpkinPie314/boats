@@ -184,11 +184,11 @@ public class Opengl {
     public static float[] readPixelColor(float s, float t){
         // Check if texture data is available
         if (texturePixelData == null) {
-            System.err.println("No texture data available for pixel reading");
-            return new float[]{1.0f, 0.0f, 1.0f, 1.0f}; // Return magenta with full alpha
+            System.err.println("no texture on the cpu to read pixel color");
+            System.exit(1);
         }
         
-        // Clamp s and t to [0, 1] range
+        // Clamp
         s = Math.max(0.0f, Math.min(1.0f, s));
         t = Math.max(0.0f, Math.min(1.0f, t));
         
@@ -196,10 +196,9 @@ public class Opengl {
         int x = (int)(s * (atlasWidth - 1));
         int y = (int)(t * (atlasHeight - 1));
         
-        // Calculate byte offset in the buffer (4 bytes per pixel: RGBA)
         int pixelIndex = (y * atlasWidth + x) * 4;
         
-        // Extract RGBA values (convert unsigned bytes to floats 0.0-1.0)
+        // turn color ints to floats 0,255 -> 0,1
         float r = (texturePixelData.get(pixelIndex) & 0xFF) / 255.0f;
         float g = (texturePixelData.get(pixelIndex + 1) & 0xFF) / 255.0f;
         float b = (texturePixelData.get(pixelIndex + 2) & 0xFF) / 255.0f;
