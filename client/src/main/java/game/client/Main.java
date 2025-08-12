@@ -356,7 +356,7 @@ public class Main {
                     Deque<float[]> wake = wakes.get(i);
                     boolean is_evil = boat.kill_count == gameState.boats.stream().mapToInt(b->b.kill_count).max().orElse(-1)
                                     && boat.kill_count >= 5;
-                    Vector3f wake_drift = is_evil ? new Vector3f(2f, -0.1f, 0 ): new Vector3f(0.2f, -0.001f, 0 );
+                    Vector3f wake_drift = is_evil ? new Vector3f(0.5f, -0.1f, 0 ): new Vector3f(0.2f, -0.001f, 0 );
 
                     float wake_texture_width = (1f/2)*bls;
                     float wake_texture_s_offset = is_evil ? (5f/2) * bls : (4f/2) * bls;
