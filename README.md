@@ -1,4 +1,15 @@
 # boats
+in this game players play as boat and try to shoot each other with cannons
+
+![gameplay screenshot](gameplay-screenshot.png)
+## architecture
+
+![architecture](architecture.png)
+to avoid race conditions, all incoming packets are read by the 'player async'. which copies it's data every frame before updating the gamestate. 
+![cannon diagram](cannon-diagram.png)
+https://excalidraw.com/#json=7yOYuo--LjJ1GtKxuTN67,tlHt3XSCNeAxYY0wnuBRng
+the cannonballs are fast forwarded to account for lag 
+
 ## installation
 
 install java 21
