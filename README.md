@@ -91,3 +91,9 @@ if you dont want to save your changes, you can just run:
 git reset --hard
 git pull
 ```
+## retrospective
+this is my first project that I did networking as well as my project using opengl and I learned a lot about graphics.
+java as a language I felt was pretty annoying. I didn't like how everything needed to be in a class. I prefer having my data and my function separate.
+I was really missing some sort of tuple or sum type, and i don't want to make a whole file for "color" or something with 3 fields and no methods.
+I have been spoiled by rust's cargo and I felt that gradle was a pain to work with.
+Overall i learned a lot with this project and am happy I put in the time to learn these things, although I do not want to write java ever again.
